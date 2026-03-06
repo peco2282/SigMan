@@ -1,0 +1,47 @@
+# Built artifacts
+bin/
+gen/
+out/
+build/
+.gradle/
+.navigation/
+app/build/
+
+# IDE files
+.idea/
+*.iml
+*.iws
+*.ipr
+.idea/workspace.xml
+.idea/tasks.xml
+.idea/gradle.xml
+.idea/assetWizardSettings.xml
+.idea/dictionaries
+.idea/libraries
+.idea/caches
+.idea/modules.xml
+.idea/deploymentTargetDropDown.xml
+
+# Local configuration file (contains local paths, SDK location, etc)
+local.properties
+
+# Log files
+*.log
+
+# Android Studio / IntelliJ files
+capture/
+memory_heap_dump/
+
+# Keystore files
+*.jks
+*.keystore
+
+# Google Services file
+google-services.json
+
+# Bundletool
+*.apks
+
+# Others
+.DS_Store
+Thumbs.db

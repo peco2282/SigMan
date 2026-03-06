@@ -1,0 +1,224 @@
+{
+  "updated_at": "2026-03-05",
+  "version": 2,
+  "carriers": {
+    "4G": {
+      "docomo": [
+        {
+          "band": "B28",
+          "frequency": "700MHz",
+          "bandwidth": "10MHz",
+          "features": "プラチナバンド（遠くまで届く）"
+        },
+        {
+          "band": "B18/19",
+          "frequency": "800MHz",
+          "bandwidth": "15MHz",
+          "features": "プラチナバンド"
+        },
+        {
+          "band": "B11/21",
+          "frequency": "1.5GHz",
+          "bandwidth": "15MHz",
+          "features": "地方や補助的な役割"
+        },
+        {
+          "band": "B3",
+          "frequency": "1.7GHz",
+          "bandwidth": "20MHz",
+          "features": "全社共通のメインバンド。高速通信用"
+        },
+        {
+          "band": "B1",
+          "frequency": "2.1GHz",
+          "bandwidth": "20MHz",
+          "features": "世界共通の主要バンド"
+        },
+        {
+          "band": "B42",
+          "frequency": "3.5GHz",
+          "bandwidth": "40MHz",
+          "features": "高速通信用。5G転用が進む"
+        }
+      ],
+      "au": [
+        {
+          "band": "B28",
+          "frequency": "700MHz",
+          "bandwidth": "10MHz",
+          "features": "プラチナバンド（遠くまで届く）"
+        },
+        {
+          "band": "B18/19",
+          "frequency": "800MHz",
+          "bandwidth": "15MHz",
+          "features": "プラチナバンド"
+        },
+        {
+          "band": "B11/21",
+          "frequency": "1.5GHz",
+          "bandwidth": "10MHz",
+          "features": "地方や補助的な役割"
+        },
+        {
+          "band": "B3",
+          "frequency": "1.7GHz",
+          "bandwidth": "20MHz",
+          "features": "全社共通のメインバンド。高速通信用"
+        },
+        {
+          "band": "B1",
+          "frequency": "2.1GHz",
+          "bandwidth": "20MHz",
+          "features": "世界共通の主要バンド"
+        },
+        {
+          "band": "B41",
+          "frequency": "2.5GHz",
+          "bandwidth": "20MHz",
+          "features": "UQ/WCP等の追加帯域"
+        },
+        {
+          "band": "B42",
+          "frequency": "3.5GHz",
+          "bandwidth": "40MHz",
+          "features": "高速通信用。5G転用が進む"
+        }
+      ],
+      "softbank": [
+        {
+          "band": "B28",
+          "frequency": "700MHz",
+          "bandwidth": "10MHz",
+          "features": "プラチナバンド（遠くまで届く）"
+        },
+        {
+          "band": "B8",
+          "frequency": "900MHz",
+          "bandwidth": "15MHz",
+          "features": "ソフトバンクのプラチナバンド"
+        },
+        {
+          "band": "B1",
+          "frequency": "2.1GHz",
+          "bandwidth": "20MHz",
+          "features": "世界共通の主要バンド"
+        },
+        {
+          "band": "B11",
+          "frequency": "1.5GHz",
+          "bandwidth": "10MHz",
+          "features": "地方や補助的な役割"
+        },
+        {
+          "band": "B3",
+          "frequency": "1.7GHz",
+          "bandwidth": "20MHz",
+          "features": "全社共通のメインバンド。高速通信用"
+        },
+        {
+          "band": "B41",
+          "frequency": "2.5GHz",
+          "bandwidth": "10MHz",
+          "features": "UQ/WCP等の追加帯域"
+        },
+        {
+          "band": "B42",
+          "frequency": "3.5GHz",
+          "bandwidth": "40MHz",
+          "features": "高速通信用。5G転用が進む"
+        }
+      ],
+      "rakuten": [
+        {
+          "band": "B28",
+          "frequency": "700MHz",
+          "bandwidth": "3MHz",
+          "features": "プラチナバンド（遠くまで届く）"
+        },
+        {
+          "band": "B18/19",
+          "frequency": "800MHz",
+          "bandwidth": "auローミング",
+          "features": "プラチナバンド。楽天はauローミング"
+        },
+        {
+          "band": "B3",
+          "frequency": "1.7GHz",
+          "bandwidth": "20MHz",
+          "features": "全社共通のメインバンド。高速通信用"
+        }
+      ]
+    },
+    "5G": {
+      "docomo": [
+        {
+          "type": "Sub6",
+          "band": "n78",
+          "bandwidth": "100MHz",
+          "features": "docomo/auの主力5G"
+        },
+        {
+          "type": "Sub6",
+          "band": "n79",
+          "bandwidth": "100MHz",
+          "features": "ドコモ専用。干渉が少なく安定"
+        },
+        {
+          "type": "ミリ波",
+          "band": "n257",
+          "bandwidth": "400MHz",
+          "features": "超高速。エリアは非常に限定的"
+        }
+      ],
+      "au": [
+        {
+          "type": "Sub6",
+          "band": "n77",
+          "bandwidth": "100MHz",
+          "features": "5Gのメイン。楽天もここが主力"
+        },
+        {
+          "type": "Sub6",
+          "band": "n78",
+          "bandwidth": "100MHz",
+          "features": "docomo/auの主力5G"
+        },
+        {
+          "type": "ミリ波",
+          "band": "n257",
+          "bandwidth": "400MHz",
+          "features": "超高速。エリアは非常に限定的"
+        }
+      ],
+      "softbank": [
+        {
+          "type": "Sub6",
+          "band": "n77",
+          "bandwidth": "100MHz",
+          "features": "5Gのメイン。楽天もここが主力"
+        },
+        {
+          "type": "ミリ波",
+          "band": "n257",
+          "bandwidth": "400MHz",
+          "features": "超高速。エリアは非常に限定的"
+        }
+      ],
+      "rakuten": [
+        {
+          "type": "Sub6",
+          "band": "n77",
+          "bandwidth": "100MHz",
+          "features": "5Gのメイン。楽天もここが主力"
+        },
+        {
+          "type": "ミリ波",
+          "band": "n257",
+          "bandwidth": "400MHz",
+          "features": "超高速。エリアは非常に限定的"
+        }
+      ]
+    }
+  }
+}

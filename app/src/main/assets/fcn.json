@@ -1,0 +1,521 @@
+{
+  "earfcn": {
+    "_comment": "4G",
+    "B1": [
+      {
+        "earfcn": 25,
+        "provider": "KDDI",
+        "frequency": 2112.5,
+        "BW": 5,
+        "note": "StarLink直接通信"
+      },
+      {
+        "earfcn": 50,
+        "provider": "KDDI",
+        "frequency": 2115.0,
+        "BW": 10
+      },
+      {
+        "earfcn": 75,
+        "provider": "KDDI",
+        "frequency": 2117.5,
+        "BW": 15
+      },
+      {
+        "earfcn": 100,
+        "provider": "KDDI",
+        "frequency": 2120.0,
+        "BW": 20
+      },
+      {
+        "earfcn": 125,
+        "provider": "KDDI",
+        "frequency": 2122.5,
+        "BW": 15
+      },
+      {
+        "earfcn": 150,
+        "provider": "KDDI",
+        "frequency": 2125.0,
+        "BW": 10
+      },
+      {
+        "earfcn": 175,
+        "provider": "KDDI",
+        "frequency": 2127.5,
+        "BW": 5
+      },
+      {
+        "earfcn": 228,
+        "provider": "docomo",
+        "frequency": 2132.8,
+        "BW": 5
+      },
+      {
+        "earfcn": 252,
+        "provider": "docomo",
+        "frequency": 2135.2,
+        "BW": 10
+      },
+      {
+        "earfcn": 276,
+        "provider": "docomo",
+        "frequency": 2137.6,
+        "BW": 15
+      },
+      {
+        "earfcn": 300,
+        "provider": "docomo",
+        "frequency": 2140.0,
+        "BW": 20
+      },
+      {
+        "earfcn": 324,
+        "provider": "docomo",
+        "frequency": 2142.4,
+        "BW": 15
+      },
+      {
+        "earfcn": 348,
+        "provider": "docomo",
+        "frequency": 2144.8,
+        "BW": 5
+      },
+      {
+        "earfcn": 372,
+        "provider": "docomo",
+        "frequency": 2147.2,
+        "BW": 5
+      },
+      {
+        "earfcn": 425,
+        "provider": "SoftBank",
+        "frequency": 2152.5,
+        "BW": 5
+      },
+      {
+        "earfcn": 450,
+        "provider": "SoftBank",
+        "frequency": 2155.0,
+        "BW": 10
+      },
+      {
+        "earfcn": 475,
+        "provider": "SoftBank",
+        "frequency": 2157.5,
+        "BW": 5
+      },
+      {
+        "earfcn": 500,
+        "provider": "SoftBank",
+        "frequency": 2160.0,
+        "BW": 20
+      },
+      {
+        "earfcn": 525,
+        "provider": "SoftBank",
+        "frequency": 2162.5,
+        "BW": 15
+      },
+      {
+        "earfcn": 550,
+        "provider": "SoftBank",
+        "frequency": 2165.0,
+        "BW": 10
+      },
+      {
+        "earfcn": 575,
+        "provider": "SoftBank",
+        "frequency": 2167.5,
+        "BW": 5
+      }
+    ],
+    "B3": [
+      {
+        "earfcn": 1300,
+        "provider": "KDDI",
+        "frequency": 1815.0,
+        "BW": 20
+      },
+      {
+        "earfcn": 1500,
+        "provider": "Rakuten",
+        "frequency": 1835.0,
+        "BW": 20
+      },
+      {
+        "earfcn": 1575,
+        "provider": "Rakuten",
+        "frequency": 1842.5,
+        "BW": 5
+      },
+      {
+        "earfcn": 1625,
+        "provider": "SoftBank",
+        "frequency": 1847.5,
+        "BW": 5
+      },
+      {
+        "earfcn": 1650,
+        "provider": "SoftBank",
+        "frequency": 1850.0,
+        "BW": 10
+      },
+      {
+        "earfcn": 1675,
+        "provider": "SoftBank",
+        "frequency": 1852.5,
+        "BW": 15
+      },
+      {
+        "earfcn": 1700,
+        "provider": "SoftBank",
+        "frequency": 1855.0,
+        "BW": 10
+      },
+      {
+        "earfcn": 1725,
+        "provider": "SoftBank",
+        "frequency": 1857.5,
+        "BW": 5
+      },
+      {
+        "earfcn": 1775,
+        "provider": "docomo",
+        "frequency": 1862.5,
+        "BW": 5
+      },
+      {
+        "earfcn": 1800,
+        "provider": "docomo",
+        "frequency": 1865.0,
+        "BW": 10
+      },
+      {
+        "earfcn": 1825,
+        "provider": "docomo",
+        "frequency": 1867.5,
+        "BW": 15
+      },
+      {
+        "earfcn": 1850,
+        "provider": "docomo",
+        "frequency": 1870.0,
+        "BW": 20
+      },
+      {
+        "earfcn": 1875,
+        "provider": "docomo",
+        "frequency": 1872.5,
+        "BW": 15
+      },
+      {
+        "earfcn": 1900,
+        "provider": "docomo",
+        "frequency": 1875.0,
+        "BW": 10
+      },
+      {
+        "earfcn": 1925,
+        "provider": "docomo",
+        "frequency": 1877.5,
+        "BW": 5
+      }
+    ],
+    "B8": [
+      {
+        "earfcn": 3675,
+        "provider": "SoftBank",
+        "frequency": 947.5,
+        "BW": 5
+      },
+      {
+        "earfcn": 3700,
+        "provider": "SoftBank",
+        "frequency": 950.0,
+        "BW": 10
+      },
+      {
+        "earfcn": 3725,
+        "provider": "SoftBank",
+        "frequency": 952.5,
+        "BW": 15
+      },
+      {
+        "earfcn": 3750,
+        "provider": "SoftBank",
+        "frequency": 955.0,
+        "BW": 10
+      },
+      {
+        "earfcn": 3775,
+        "provider": "SoftBank",
+        "frequency": 957.5,
+        "BW": 5
+      },
+      {
+        "earfcn": 3825,
+        "provider": "MCA-A",
+        "frequency": 962.5,
+        "BW": 5
+      }
+    ],
+    "B11": [
+      {
+        "earfcn": 4775,
+        "provider": "SoftBank",
+        "frequency": 1478.4,
+        "BW": 5
+      },
+      {
+        "earfcn": 4800,
+        "provider": "SoftBank",
+        "frequency": 1480.9,
+        "BW": 10
+      },
+      {
+        "earfcn": 4825,
+        "provider": "SoftBank",
+        "frequency": 1483.4,
+        "BW": 5
+      },
+      {
+        "earfcn": 4875,
+        "provider": "KDDI",
+        "frequency": 1488.4,
+        "BW": 5
+      },
+      {
+        "earfcn": 4900,
+        "provider": "KDDI",
+        "frequency": 1490.9,
+        "BW": 10
+      },
+      {
+        "earfcn": 4925,
+        "provider": "KDDI",
+        "frequency": 1493.4,
+        "BW": 5
+      }
+    ],
+    "B18": [
+      {
+        "earfcn": 5875,
+        "provider": "KDDI",
+        "frequency": 862.5,
+        "BW": 5
+      },
+      {
+        "earfcn": 5900,
+        "provider": "KDDI",
+        "frequency": 865.0,
+        "BW": 10
+      },
+      {
+        "earfcn": 5925,
+        "provider": "KDDI",
+        "frequency": 867.5,
+        "BW": 15
+      },
+      {
+        "earfcn": 5950,
+        "provider": "KDDI",
+        "frequency": 870.0,
+        "BW": 10
+      },
+      {
+        "earfcn": 5975,
+        "provider": "KDDI",
+        "frequency": 872.5,
+        "BW": 5
+      }
+    ],
+    "B19": [
+      {
+        "earfcn": 6025,
+        "provider": "docomo",
+        "frequency": 877.5,
+        "BW": 5
+      },
+      {
+        "earfcn": 6050,
+        "provider": "docomo",
+        "frequency": 880.0,
+        "BW": 10
+      },
+      {
+        "earfcn": 6075,
+        "provider": "docomo",
+        "frequency": 882.5,
+        "BW": 15
+      },
+      {
+        "earfcn": 6100,
+        "provider": "docomo",
+        "frequency": 885.0,
+        "BW": 10
+      },
+      {
+        "earfcn": 6125,
+        "provider": "docomo",
+        "frequency": 887.5,
+        "BW": 5
+      }
+    ],
+    "B21": [
+      {
+        "earfcn": 6475,
+        "provider": "docomo",
+        "frequency": 1498.4,
+        "BW": 5
+      },
+      {
+        "earfcn": 6500,
+        "provider": "docomo",
+        "frequency": 1500.9,
+        "BW": 10
+      },
+      {
+        "earfcn": 6525,
+        "provider": "docomo",
+        "frequency": 1503.4,
+        "BW": 15
+      },
+      {
+        "earfcn": 6550,
+        "provider": "docomo",
+        "frequency": 1505.9,
+        "BW": 10
+      },
+      {
+        "earfcn": 6575,
+        "provider": "docomo",
+        "frequency": 1508.4,
+        "BW": 5
+      }
+    ],
+    "B26": [
+      {
+        "earfcn": 8750,
+        "provider": "KDDI",
+        "frequency": 865.0,
+        "BW": 10
+      },
+      {
+        "earfcn": 8950,
+        "provider": "docomo",
+        "frequency": 885.0,
+        "BW": 10
+      }
+    ],
+    "B28": [
+      {
+        "earfcn": 9345,
+        "provider": "Rakuten",
+        "frequency": 771.5,
+        "BW": 3
+      },
+      {
+        "earfcn": 9410,
+        "provider": "KDDI",
+        "frequency": 778.0,
+        "BW": 10
+      },
+      {
+        "earfcn": 9485,
+        "provider": "docomo",
+        "frequency": 785.5,
+        "BW": 5
+      },
+      {
+        "earfcn": 9510,
+        "provider": "docomo",
+        "frequency": 788.0,
+        "BW": 10
+      },
+      {
+        "earfcn": 9535,
+        "provider": "docomo",
+        "frequency": 790.5,
+        "BW": 5
+      },
+      {
+        "earfcn": 9610,
+        "provider": "SoftBank",
+        "frequency": 798.0,
+        "BW": 10
+      }
+    ],
+    "B41": [
+      {
+        "earfcn": 40196,
+        "provider": "WCP(SB)",
+        "frequency": 2550.6,
+        "BW": 15,
+        "note": "WCP(SB)はSoftBankのWCPサービス"
+      },
+      {
+        "earfcn": 40340,
+        "provider": "WCP(SB)",
+        "frequency": 2565.0,
+        "BW": 20
+      },
+      {
+        "earfcn": 40540,
+        "provider": "地域BWA",
+        "frequency": 2585.0,
+        "BW": 20
+      },
+      {
+        "earfcn": 40842,
+        "provider": "KDDI",
+        "frequency": 2615.2,
+        "BW": 10
+      },
+      {
+        "earfcn": 41040,
+        "provider": "KDDI",
+        "frequency": 2635.0,
+        "BW": 20
+      }
+    ],
+    "B42": [
+      {
+        "earfcn": 42491,
+        "provider": "docomo",
+        "frequency": 3490.1,
+        "BW": 20
+      },
+      {
+        "earfcn": 42689,
+        "provider": "docomo",
+        "frequency": 3509.9,
+        "BW": 20
+      },
+      {
+        "earfcn": 42892,
+        "provider": "KDDI",
+        "frequency": 3530.2,
+        "BW": 20
+      },
+      {
+        "earfcn": 43090,
+        "provider": "KDDI",
+        "frequency": 3550.0,
+        "BW": 20
+      },
+      {
+        "earfcn": 43291,
+        "provider": "SoftBank",
+        "frequency": 3570.1,
+        "BW": 20
+      },
+      {
+        "earfcn": 43489,
+        "provider": "SoftBank",
+        "frequency": 3589.9,
+        "BW": 20
+      }
+    ]
+  }
+}
