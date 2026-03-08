@@ -73,12 +73,23 @@ data class FCNRoot(
 )
 
 data class FCN(
-  val earfcn: Map<String, List<EarfcnChild>>
+  val earfcn: Map<String, List<EarfcnChild>>,
+  val nrarfcn: Map<String, List<NrfcnChild>>
 )
 
 @Serializable
 data class EarfcnChild(
   val earfcn: Int,
+  val provider: String,
+  val frequency: Double,
+  @SerialName("BW")
+  val bw: Double,
+  val note: String? = null
+)
+
+@Serializable
+data class NrfcnChild(
+  val nrarfcn: Int,
   val provider: String,
   val frequency: Double,
   @SerialName("BW")
@@ -100,12 +111,22 @@ object CarrierUtils {
 
   fun getEarfcnDetails(fcn: FCN?, earfcn: Int?): Pair<String?, EarfcnChild?> {
     if (fcn == null || earfcn == null) return null to null
-    fcn.earfcn.let { fcnMap ->
-      fcnMap.forEach { (band, children) ->
-        children.forEach { child ->
-          if (child.earfcn == earfcn) {
-            return band to child
-          }
+    fcn.earfcn.forEach { (band, children) ->
+      children.forEach { child ->
+        if (child.earfcn == earfcn) {
+          return band to child
+        }
+      }
+    }
+    return null to null
+  }
+
+  fun getNrfcnDetails(fcn: FCN?, nrarfcn: Int?): Pair<String?, NrfcnChild?> {
+    if (fcn == null || nrarfcn == null) return null to null
+    fcn.nrarfcn.forEach { (band, children) ->
+      children.forEach { child ->
+        if (child.nrarfcn == nrarfcn) {
+          return band to child
         }
       }
     }
@@ -114,6 +135,11 @@ object CarrierUtils {
 
   fun getBandWidth(fcn: FCN?, earfcn: Int?): Pair<String?, Double?> {
     val (band, child) = getEarfcnDetails(fcn, earfcn)
+    return band to child?.bw
+  }
+
+  fun getNrBandWidth(fcn: FCN?, nrarfcn: Int?): Pair<String?, Double?> {
+    val (band, child) = getNrfcnDetails(fcn, nrarfcn)
     return band to child?.bw
   }
 }
@@ -143,11 +169,17 @@ object AssetsLoader {
       val jsonString = context.assets.open("fcn.json").bufferedReader().use { it.readText() }
       val root = json.decodeFromString<Map<String, Map<String, JsonElement>>>(jsonString)
       val earfcnContent = root["earfcn"] ?: return null
+      val nrarfcnContent = root["nrarfcn"] ?: return null
 
-      earfcnContent.filterKeys { !it.startsWith("_") }
+      val earfcn = earfcnContent.filterKeys { !it.startsWith("_") }
         .mapValues { entry ->
           json.decodeFromJsonElement<List<EarfcnChild>>(entry.value)
-        }.let { FCN(it) }
+        }
+      val nrarfcn = nrarfcnContent.filterKeys { !it.startsWith("_") }
+        .mapValues { entry ->
+          json.decodeFromJsonElement<List<NrfcnChild>>(entry.value)
+        }
+      FCN(earfcn, nrarfcn)
     } catch (e: Exception) {
       e.printStackTrace()
       null

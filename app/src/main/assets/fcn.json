@@ -517,5 +517,32 @@
         "BW": 20
       }
     ]
+  },
+  "nrarfcn": {
+    "_comment": "5G NR Bands (NR-ARFCN/SSB-ARFCN)",
+    "n1": [
+      { "nrarfcn": 428930, "provider": "docomo", "frequency": 2144.65, "BW": 10, "note": "非DSS" },
+      { "nrarfcn": 431790, "provider": "SoftBank", "frequency": 2158.95, "BW": 20 }
+    ],
+    "n3": [
+      { "nrarfcn": 362910, "provider": "au", "frequency": 1819.55, "BW": 20 },
+      { "nrarfcn": 369870, "provider": "SoftBank", "frequency": 1849.35, "BW": 15, "note": "DSS" }
+    ],
+    "n28": [
+      { "nrarfcn": 155570, "provider": "au", "frequency": 777.85, "BW": 10 },
+      { "nrarfcn": 157690, "provider": "docomo", "frequency": 788.45, "BW": 10 },
+      { "nrarfcn": 159630, "provider": "SoftBank", "frequency": 798.15, "BW": 10 }
+    ],
+    "n77": [
+      { "nrarfcn": 640608, "provider": "docomo", "frequency": 3609.12, "BW": 100 },
+      { "nrarfcn": 647328, "provider": "au", "frequency": 3709.92, "BW": 100 },
+      { "nrarfcn": 653952, "provider": "Rakuten", "frequency": 3809.28, "BW": 100 },
+      { "nrarfcn": 660768, "provider": "SoftBank", "frequency": 3911.52, "BW": 100 }
+    ],
+    "n257": [
+      { "nrarfcn": 2070015, "provider": "docomo", "frequency": 27450.96, "BW": 100 },
+      { "nrarfcn": 2076667, "provider": "au", "frequency": 27850.08, "BW": 100 },
+      { "nrarfcn": 2097883, "provider": "SoftBank", "frequency": 29123.04, "BW": 100 }
+    ]
   }
 }

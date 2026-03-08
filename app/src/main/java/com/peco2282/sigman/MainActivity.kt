@@ -564,21 +564,31 @@ fun CellularInfoCard(info: CellularInfo, fcnConfig: FCN?, neighborCellCount: Int
         }
       }
 
-      val earfcnDetails = when (info.networkType) {
+      val detailInfo = when (info.networkType) {
         NetworkType.LTE -> CarrierUtils.getEarfcnDetails(fcnConfig, info.earfcn).second
-        // TODO: NR (nrarfcn) の詳細も必要であれば fcn.json に NR 用のデータが必要
+        NetworkType.NR -> CarrierUtils.getNrfcnDetails(fcnConfig, info.nrarfcn).second
         else -> null
       }
 
-      if (info.bandDetails != null || earfcnDetails != null) {
-        val frequency = earfcnDetails?.frequency?.let { "$it MHz" } ?: info.bandDetails?.frequency ?: "N/A"
+      if (info.bandDetails != null || detailInfo != null) {
+        val frequency = when (detailInfo) {
+          is EarfcnChild -> "${detailInfo.frequency} MHz"
+          is NrfcnChild -> "${detailInfo.frequency} MHz"
+          else -> info.bandDetails?.frequency ?: "N/A"
+        }
         Text(
           text = "Frequency: $frequency",
           style = MaterialTheme.typography.bodyLarge,
           color = MaterialTheme.colorScheme.primary
         )
         Text(
-          text = info.bandDetails?.features ?: "",
+          text = info.bandDetails?.features ?: detailInfo?.let {
+            when (it) {
+              is EarfcnChild -> it.note ?: ""
+              is NrfcnChild -> it.note ?: ""
+              else -> ""
+            }
+          } ?: "",
           style = MaterialTheme.typography.bodyMedium,
           color = MaterialTheme.colorScheme.secondary
         )
@@ -590,14 +600,11 @@ fun CellularInfoCard(info: CellularInfo, fcnConfig: FCN?, neighborCellCount: Int
       Text(text = "Signal: ${info.dbm} dBm")
 
       if (info.networkType == NetworkType.LTE) {
-//        val bandwidthMhz = info.bandwidth?.let {
-//          if (it == Int.MAX_VALUE) null
-//          else it / 1000.0
-//        }
-        val fcn = CarrierUtils.getBandWidth(fcnConfig, info.earfcn).second
-        Text(text = "EARFCN: ${info.earfcn}" + (fcn?.let { " / BW: %.1f MHz".format(it) } ?: ""))
+        val bw = CarrierUtils.getBandWidth(fcnConfig, info.earfcn).second
+        Text(text = "EARFCN: ${info.earfcn}" + (bw?.let { " / BW: %.1f MHz".format(it) } ?: ""))
       } else if (info.networkType == NetworkType.NR) {
-        Text(text = "NR-ARFCN: ${info.nrarfcn}")
+        val bw = CarrierUtils.getNrBandWidth(fcnConfig, info.nrarfcn).second
+        Text(text = "NR-ARFCN: ${info.nrarfcn}" + (bw?.let { " / BW: %.1f MHz".format(it) } ?: ""))
       }
     }
   }
