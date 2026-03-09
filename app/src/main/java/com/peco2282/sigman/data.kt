@@ -52,7 +52,9 @@ data class CellularInfo(
   val mnc: String? = null,
   val band: String? = null,
   val bandwidth: Int? = null, // kHz (LTE)
-  val dbm: Int? = null,
+  val rsrp: Int? = null,
+  val rsrq: Int? = null,
+  val rssi: Int? = null,
   val earfcn: Int? = null,
   val nrarfcn: Int? = null,
   val isRegistered: Boolean = false,

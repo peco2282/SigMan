@@ -6,7 +6,6 @@ import android.content.Intent
 import android.content.IntentSender
 import android.content.pm.PackageManager
 import android.location.LocationManager
-import android.net.ConnectivityManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -34,7 +33,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.google.android.gms.common.api.ResolvableApiException
 import com.google.android.gms.location.*
@@ -326,9 +324,6 @@ class MainActivity : ComponentActivity() {
       val infos = all.filter { it.isRegistered }.map { info ->
         when (info) {
           is CellInfoLte -> {
-            //{mRegistered=YES mTimeStamp=3129033173909ns mCellConnectionStatus=0 CellIdentityLte:{ mCi=28975617 mPci=13 mTac=6181 mEarfcn=1675 mBands=[3] mBandwidth=15000 mMcc=440 mMnc=20 mAlphaLong=SoftBank mAlphaShort=SoftBank mAdditionalPlmns={} mCsgInfo=null} CellSignalStrengthLte: rssi=-57 rsrp=-92 rsrq=-15 rssnr=2147483647 cqiTableIndex=2147483647 cqi=2147483647 ta=2147483647 level=3 parametersUseForLevel=0 android.telephony.CellConfigLte :{ isEndcAvailable = false }}
-            info.cellConnectionStatus
-            Log.i(TAG, info.toString())
             val identity = info.cellIdentity
             val bands = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) identity.bands else intArrayOf()
             var bandString = if (bands.isNotEmpty()) "B${bands.joinToString(", ")}" else null
@@ -352,7 +347,9 @@ class MainActivity : ComponentActivity() {
               providerName = telephonyManager.networkOperatorName,
               mcc = identity.mccString,
               mnc = identity.mncString,
-              dbm = info.cellSignalStrength.dbm,
+              rsrp = info.cellSignalStrength.dbm,
+              rsrq = info.cellSignalStrength.rsrq,
+              rssi = info.cellSignalStrength.rssi,
               earfcn = identity.earfcn,
               bandwidth = identity.bandwidth,
               band = bandString,
@@ -387,7 +384,9 @@ class MainActivity : ComponentActivity() {
               providerName = telephonyManager.networkOperatorName,
               mcc = identity.mccString,
               mnc = identity.mncString,
-              dbm = info.cellSignalStrength.dbm,
+              rsrp = info.cellSignalStrength.dbm,
+              rsrq = null,
+              rssi = null,
               nrarfcn = identity.nrarfcn,
               band = bandString,
               isRegistered = true,
@@ -427,7 +426,9 @@ class MainActivity : ComponentActivity() {
               providerName = telephonyManager.networkOperatorName,
               mcc = identity.mccString,
               mnc = identity.mncString,
-              dbm = info.cellSignalStrength.dbm,
+              rsrp = info.cellSignalStrength.dbm,
+              rsrq = info.cellSignalStrength.rsrq,
+              rssi = info.cellSignalStrength.rssi,
               earfcn = identity.earfcn,
               bandwidth = identity.bandwidth,
               band = bandString,
@@ -462,7 +463,9 @@ class MainActivity : ComponentActivity() {
               providerName = telephonyManager.networkOperatorName,
               mcc = identity.mccString,
               mnc = identity.mncString,
-              dbm = info.cellSignalStrength.dbm,
+              rsrp = info.cellSignalStrength.dbm,
+              rsrq = null,
+              rssi = null,
               nrarfcn = identity.nrarfcn,
               band = bandString,
               isRegistered = false,
@@ -682,7 +685,7 @@ fun CellularInfoCard(info: CellularInfo, fcnConfig: FCN?, neighborCellCount: Int
       HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
       Text(text = "Provider: ${info.providerName ?: "Unknown"}")
-      Text(text = "RSRP: ${info.dbm} dBm")
+      Text(text = "RSRP: ${info.rsrp} dBm  /  RSRQ: ${info.rsrq} dB")
 
       if (info.networkType == NetworkType.LTE) {
         val bw = CarrierUtils.getBandWidth(fcnConfig, info.earfcn).second
