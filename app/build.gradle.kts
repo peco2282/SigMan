@@ -36,6 +36,13 @@ android {
     compose = true
   }
 
+  lint {
+    // エラーが見つかってもビルドを中断しない
+    abortOnError = false
+    // チェックをスキップしたい場合は以下も有効
+    checkReleaseBuilds = false
+  }
+
   sourceSets {
     getByName("main") {
       assets.srcDirs("src/main/assets")

@@ -56,7 +56,9 @@ data class CellularInfo(
   val earfcn: Int? = null,
   val nrarfcn: Int? = null,
   val isRegistered: Boolean = false,
-  val bandDetails: BandInfo? = null // bands.jsonからの詳細情報
+  val bandDetails: BandInfo? = null, // bands.jsonからの詳細情報
+  val timestampNs: Long = 0L, // CellInfo.timestamp から取得されるナノ秒
+  val collectedAt: Long = 0L // アプリ側で取得した時刻 (System.currentTimeMillis())
 )
 
 data class DisplayContext(
@@ -64,6 +66,7 @@ data class DisplayContext(
   val carrierBands: List<CellularInfo> = emptyList(),
   val lastUpdated: Long = 0L,
   val hasLocationPermission: Boolean = true,
+  val hasPhoneStatePermission: Boolean = true,
   val isLocationEnabled: Boolean = true
 )
 

@@ -68,10 +68,12 @@ class MainActivity : ComponentActivity() {
     }
   }
 
-  private val requestPermissionLauncher: ActivityResultLauncher<String> = registerForActivityResult(
-    ActivityResultContracts.RequestPermission()
-  ) { isGranted: Boolean ->
-    if (isGranted) {
+  private val requestPermissionLauncher: ActivityResultLauncher<Array<String>> = registerForActivityResult(
+    ActivityResultContracts.RequestMultiplePermissions()
+  ) { permissions ->
+    val locationGranted = permissions[Manifest.permission.ACCESS_FINE_LOCATION] ?: false
+    val phoneStateGranted = permissions[Manifest.permission.READ_PHONE_STATE] ?: false
+    if (locationGranted && phoneStateGranted) {
       startUpdating()
     } else {
       updatePermissionState()
@@ -90,13 +92,18 @@ class MainActivity : ComponentActivity() {
   }
 
   private fun updatePermissionState() {
-    val isGranted = ContextCompat.checkSelfPermission(
+    val locationGranted = ContextCompat.checkSelfPermission(
       this,
       Manifest.permission.ACCESS_FINE_LOCATION
     ) == PackageManager.PERMISSION_GRANTED
+    val phoneStateGranted = ContextCompat.checkSelfPermission(
+      this,
+      Manifest.permission.READ_PHONE_STATE
+    ) == PackageManager.PERMISSION_GRANTED
     val isEnabled = isLocationEnabled()
     displayState.value = displayState.value.copy(
-      hasLocationPermission = isGranted,
+      hasLocationPermission = locationGranted,
+      hasPhoneStatePermission = phoneStateGranted,
       isLocationEnabled = isEnabled
     )
   }
@@ -154,9 +161,10 @@ class MainActivity : ComponentActivity() {
       SigManTheme {
         Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
           val context = displayState.value
-          if (!context.hasLocationPermission || !context.isLocationEnabled) {
+          if (!context.hasLocationPermission || !context.hasPhoneStatePermission || !context.isLocationEnabled) {
             PermissionRequiredView(
-              hasPermission = context.hasLocationPermission,
+              hasLocationPermission = context.hasLocationPermission,
+              hasPhoneStatePermission = context.hasPhoneStatePermission,
               isLocationEnabled = context.isLocationEnabled,
               onPermissionRequest = { checkPermissionAndRun() },
               onOpenSettings = { openAppSettings() },
@@ -182,7 +190,7 @@ class MainActivity : ComponentActivity() {
 
   override fun onStart() {
     super.onStart()
-    startUpdating()
+    checkPermissionAndRun()
   }
 
   override fun onStop() {
@@ -191,30 +199,39 @@ class MainActivity : ComponentActivity() {
   }
 
   private fun checkPermissionAndRun() {
-    when {
-      ContextCompat.checkSelfPermission(
-        this,
-        Manifest.permission.ACCESS_FINE_LOCATION
-      ) == PackageManager.PERMISSION_GRANTED -> {
-        updatePermissionState()
-        startUpdating()
-      }
+    val locationPermission = Manifest.permission.ACCESS_FINE_LOCATION
+    val phoneStatePermission = Manifest.permission.READ_PHONE_STATE
 
-      ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.ACCESS_FINE_LOCATION) -> {
-        updatePermissionState()
-        requestPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
-      }
+    val locationGranted = ContextCompat.checkSelfPermission(this, locationPermission) == PackageManager.PERMISSION_GRANTED
+    val phoneStateGranted = ContextCompat.checkSelfPermission(this, phoneStatePermission) == PackageManager.PERMISSION_GRANTED
 
-      else -> {
-        updatePermissionState()
-        requestPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
-      }
+    if (locationGranted && phoneStateGranted) {
+      updatePermissionState()
+      startUpdating()
+    } else {
+      updatePermissionState()
+      requestPermissionLauncher.launch(arrayOf(locationPermission, phoneStatePermission))
     }
   }
 
   private fun startUpdating() {
     // Ensure initial load
     updateCellularInfo()
+
+    // Check permissions before registering callbacks
+    val locationGranted = ContextCompat.checkSelfPermission(
+      this,
+      Manifest.permission.ACCESS_FINE_LOCATION
+    ) == PackageManager.PERMISSION_GRANTED
+    val phoneStateGranted = ContextCompat.checkSelfPermission(
+      this,
+      Manifest.permission.READ_PHONE_STATE
+    ) == PackageManager.PERMISSION_GRANTED
+
+    if (!locationGranted || !phoneStateGranted) {
+      Log.w(TAG, "Cannot start updating: permissions not granted (Location: $locationGranted, PhoneState: $phoneStateGranted)")
+      return
+    }
 
     // Register callbacks depending on API level
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -301,14 +318,27 @@ class MainActivity : ComponentActivity() {
     ) {
       return
     }
+
+    val now = System.currentTimeMillis()
+
     try {
       val all = telephonyManager.allCellInfo ?: emptyList<CellInfo>()
       val infos = all.filter { it.isRegistered }.map { info ->
         when (info) {
           is CellInfoLte -> {
+            //{mRegistered=YES mTimeStamp=3129033173909ns mCellConnectionStatus=0 CellIdentityLte:{ mCi=28975617 mPci=13 mTac=6181 mEarfcn=1675 mBands=[3] mBandwidth=15000 mMcc=440 mMnc=20 mAlphaLong=SoftBank mAlphaShort=SoftBank mAdditionalPlmns={} mCsgInfo=null} CellSignalStrengthLte: rssi=-57 rsrp=-92 rsrq=-15 rssnr=2147483647 cqiTableIndex=2147483647 cqi=2147483647 ta=2147483647 level=3 parametersUseForLevel=0 android.telephony.CellConfigLte :{ isEndcAvailable = false }}
+            info.cellConnectionStatus
+            Log.i(TAG, info.toString())
             val identity = info.cellIdentity
             val bands = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) identity.bands else intArrayOf()
-            val bandString = if (bands.isNotEmpty()) "B${bands.joinToString(", ")}" else null
+            var bandString = if (bands.isNotEmpty()) "B${bands.joinToString(", ")}" else null
+
+            if (bandString == null) {
+              val (b, _) = CarrierUtils.getEarfcnDetails(fcnConfig, identity.earfcn)
+              if (b != null) {
+                bandString = b
+              }
+            }
 
             val carrierKey = CarrierUtils.getCarrierName(identity.mccString, identity.mncString)
             val details = carrierKey?.let { key ->
@@ -327,14 +357,23 @@ class MainActivity : ComponentActivity() {
               bandwidth = identity.bandwidth,
               band = bandString,
               isRegistered = true,
-              bandDetails = details
+              bandDetails = details,
+              timestampNs = info.timeStamp,
+              collectedAt = now
             )
           }
 
           is CellInfoNr -> {
             val identity = info.cellIdentity as CellIdentityNr
             val bands = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) identity.bands else intArrayOf()
-            val bandString = if (bands.isNotEmpty()) "n${bands.joinToString(", ")}" else null
+            var bandString = if (bands.isNotEmpty()) "n${bands.joinToString(", ")}" else null
+
+            if (bandString == null) {
+              val (b, _) = CarrierUtils.getNrfcnDetails(fcnConfig, identity.nrarfcn)
+              if (b != null) {
+                bandString = b
+              }
+            }
 
             val carrierKey = CarrierUtils.getCarrierName(identity.mccString, identity.mncString)
             val details = carrierKey?.let { key ->
@@ -351,12 +390,14 @@ class MainActivity : ComponentActivity() {
               dbm = info.cellSignalStrength.dbm,
               nrarfcn = identity.nrarfcn,
               band = bandString,
-              isRegistered = info.isRegistered,
-              bandDetails = details
+              isRegistered = true,
+              bandDetails = details,
+              timestampNs = info.timeStamp,
+              collectedAt = now
             )
           }
 
-          else -> CellularInfo(networkType = NetworkType.UNKNOWN)
+          else -> CellularInfo(networkType = NetworkType.UNKNOWN, collectedAt = now)
         }
       }
 
@@ -365,7 +406,14 @@ class MainActivity : ComponentActivity() {
           is CellInfoLte -> {
             val identity = info.cellIdentity
             val bands = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) identity.bands else intArrayOf()
-            val bandString = if (bands.isNotEmpty()) "B${bands.joinToString(", ")}" else null
+            var bandString = if (bands.isNotEmpty()) "B${bands.joinToString(", ")}" else null
+
+            if (bandString == null) {
+              val (b, _) = CarrierUtils.getEarfcnDetails(fcnConfig, identity.earfcn)
+              if (b != null) {
+                bandString = b
+              }
+            }
 
             val carrierKey = CarrierUtils.getCarrierName(identity.mccString, identity.mncString)
             val details = carrierKey?.let { key ->
@@ -384,14 +432,23 @@ class MainActivity : ComponentActivity() {
               bandwidth = identity.bandwidth,
               band = bandString,
               isRegistered = info.isRegistered,
-              bandDetails = details
+              bandDetails = details,
+              timestampNs = info.timeStamp,
+              collectedAt = now
             )
           }
 
           is CellInfoNr -> {
             val identity = info.cellIdentity as CellIdentityNr
             val bands = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) identity.bands else intArrayOf()
-            val bandString = if (bands.isNotEmpty()) "n${bands.joinToString(", ")}" else null
+            var bandString = if (bands.isNotEmpty()) "n${bands.joinToString(", ")}" else null
+
+            if (bandString == null) {
+              val (b, _) = CarrierUtils.getNrfcnDetails(fcnConfig, identity.nrarfcn)
+              if (b != null) {
+                bandString = b
+              }
+            }
 
             val carrierKey = CarrierUtils.getCarrierName(identity.mccString, identity.mncString)
             val details = carrierKey?.let { key ->
@@ -409,11 +466,13 @@ class MainActivity : ComponentActivity() {
               nrarfcn = identity.nrarfcn,
               band = bandString,
               isRegistered = false,
-              bandDetails = details
+              bandDetails = details,
+              timestampNs = info.timeStamp,
+              collectedAt = now
             )
           }
 
-          else -> CellularInfo(networkType = NetworkType.UNKNOWN)
+          else -> CellularInfo(networkType = NetworkType.UNKNOWN, collectedAt = now)
         }
       }
 
@@ -433,13 +492,15 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun PermissionRequiredView(
-  hasPermission: Boolean,
+  hasLocationPermission: Boolean,
+  hasPhoneStatePermission: Boolean,
   isLocationEnabled: Boolean,
   onPermissionRequest: () -> Unit,
   onOpenSettings: () -> Unit,
   onOpenLocationSettings: () -> Unit,
   modifier: Modifier = Modifier
 ) {
+  val hasPermissions = hasLocationPermission && hasPhoneStatePermission
   Column(
     modifier = modifier
       .fillMaxSize()
@@ -455,20 +516,26 @@ fun PermissionRequiredView(
     )
     Spacer(modifier = Modifier.height(16.dp))
     Text(
-      text = if (!hasPermission) "位置情報の権限が必要です" else "位置情報をオンにしてください",
+      text = if (!hasPermissions) "必要な権限がありません" else "位置情報をオンにしてください",
       style = MaterialTheme.typography.headlineSmall,
       textAlign = TextAlign.Center
     )
     Spacer(modifier = Modifier.height(8.dp))
+    val message = when {
+      !hasLocationPermission && !hasPhoneStatePermission -> "セル情報を取得するには、位置情報と電話の権限が必要です。"
+      !hasLocationPermission -> "セル情報を取得するには、位置情報の権限が必要です。"
+      !hasPhoneStatePermission -> "セル情報を取得するには、電話の状態の権限が必要です。"
+      !isLocationEnabled -> "セル情報を取得するには、位置情報サービスを有効にする必要があります。"
+      else -> ""
+    }
     Text(
-      text = if (!hasPermission) "セル情報を取得するには、位置情報の権限が必要です。設定から許可してください。"
-      else "セル情報を取得するには、位置情報サービスを有効にする必要があります。",
+      text = message,
       style = MaterialTheme.typography.bodyMedium,
       textAlign = TextAlign.Center,
       color = MaterialTheme.colorScheme.onSurfaceVariant
     )
     Spacer(modifier = Modifier.height(24.dp))
-    if (!hasPermission) {
+    if (!hasPermissions) {
       Button(
         onClick = onPermissionRequest,
         modifier = Modifier.fillMaxWidth()
@@ -531,12 +598,21 @@ fun CellularInfoList(
       }
     }
 
-    item {
-      Spacer(modifier = Modifier.height(32.dp))
+    if (displayContext.carrierBands.isNotEmpty()) {
+      item {
+        Text(
+          text = "Neighbor Cells",
+          style = MaterialTheme.typography.titleMedium,
+          modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
+        )
+      }
+      items(displayContext.carrierBands) { info ->
+        CellularInfoCard(info, fcnConfig)
+      }
     }
 
-    items(displayContext.carrierBands) { info ->
-      CellularInfoCard(info, fcnConfig)
+    item {
+      Spacer(modifier = Modifier.height(32.dp))
     }
   }
 }
@@ -550,8 +626,17 @@ fun CellularInfoCard(info: CellularInfo, fcnConfig: FCN?, neighborCellCount: Int
   ) {
     Column(modifier = Modifier.padding(12.dp)) {
       Row(verticalAlignment = Alignment.CenterVertically) {
+        val bandDisplay = if (info.band.isNullOrEmpty()) {
+          when (info.networkType) {
+            NetworkType.LTE -> CarrierUtils.getEarfcnDetails(fcnConfig, info.earfcn).first ?: ""
+            NetworkType.NR -> CarrierUtils.getNrfcnDetails(fcnConfig, info.nrarfcn).first ?: ""
+            else -> ""
+          }
+        } else {
+          info.band
+        }
         Text(
-          text = "${info.networkType} ${info.band ?: ""}",
+          text = "${info.networkType} $bandDisplay",
           style = MaterialTheme.typography.headlineSmall
         )
         Spacer(modifier = Modifier.weight(1f))
@@ -606,6 +691,14 @@ fun CellularInfoCard(info: CellularInfo, fcnConfig: FCN?, neighborCellCount: Int
         val bw = CarrierUtils.getNrBandWidth(fcnConfig, info.nrarfcn).second
         Text(text = "NR-ARFCN: ${info.nrarfcn}" + (bw?.let { " / BW: %.1f MHz".format(it) } ?: ""))
       }
+//
+//      val sdf = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.getDefault())
+//      val collectedStr = sdf.format(java.util.Date(info.collectedAt))
+//      Text(
+//        text = "Collected at: $collectedStr (mTimestamp: ${info.timestampNs})",
+//        style = MaterialTheme.typography.labelSmall,
+//        color = MaterialTheme.colorScheme.outline
+//      )
     }
   }
 }
