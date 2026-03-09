@@ -682,7 +682,7 @@ fun CellularInfoCard(info: CellularInfo, fcnConfig: FCN?, neighborCellCount: Int
       HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
       Text(text = "Provider: ${info.providerName ?: "Unknown"}")
-      Text(text = "Signal: ${info.dbm} dBm")
+      Text(text = "RSRP: ${info.dbm} dBm")
 
       if (info.networkType == NetworkType.LTE) {
         val bw = CarrierUtils.getBandWidth(fcnConfig, info.earfcn).second
