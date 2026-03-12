@@ -307,6 +307,85 @@ class MainActivity : ComponentActivity() {
     handler.removeCallbacks(pollRunnable)
   }
 
+  private fun convertToCellularInfo(info: CellInfo, now: Long): CellularInfo {
+    return when (info) {
+      is CellInfoLte -> {
+        val identity = info.cellIdentity
+        val bands = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) identity.bands else intArrayOf()
+        var bandString = if (bands.isNotEmpty()) "B${bands.joinToString(", ")}" else null
+
+        if (bandString == null) {
+          val (b, _) = CarrierUtils.getEarfcnDetails(fcnConfig, identity.earfcn)
+          if (b != null) {
+            bandString = b
+          }
+        }
+
+        val carrierKey = CarrierUtils.getCarrierName(identity.mccString, identity.mncString)
+        val details = carrierKey?.let { key ->
+          bandsConfig?.carriers?.get("4G")?.getBandsByCarrier(key)?.find { b ->
+            bands.any { it.toString() == b.band.replace("B", "").split("/").first() }
+          }
+        }
+
+        CellularInfo(
+          networkType = NetworkType.LTE,
+          providerName = telephonyManager.networkOperatorName,
+          mcc = identity.mccString,
+          mnc = identity.mncString,
+          rsrp = info.cellSignalStrength.dbm,
+          rsrq = info.cellSignalStrength.rsrq,
+          rssi = info.cellSignalStrength.rssi,
+          earfcn = identity.earfcn,
+          bandwidth = identity.bandwidth,
+          band = bandString,
+          isRegistered = info.isRegistered,
+          bandDetails = details,
+          timestampNs = info.timeStamp,
+          collectedAt = now
+        )
+      }
+
+      is CellInfoNr -> {
+        val identity = info.cellIdentity as CellIdentityNr
+        val bands = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) identity.bands else intArrayOf()
+        var bandString = if (bands.isNotEmpty()) "n${bands.joinToString(", ")}" else null
+
+        if (bandString == null) {
+          val (b, _) = CarrierUtils.getNrfcnDetails(fcnConfig, identity.nrarfcn)
+          if (b != null) {
+            bandString = b
+          }
+        }
+
+        val carrierKey = CarrierUtils.getCarrierName(identity.mccString, identity.mncString)
+        val details = carrierKey?.let { key ->
+          bandsConfig?.carriers?.get("5G")?.getBandsByCarrier(key)?.find { b ->
+            bands.any { it.toString() == b.band.replace("n", "") }
+          }
+        }
+
+        CellularInfo(
+          networkType = NetworkType.NR,
+          providerName = telephonyManager.networkOperatorName,
+          mcc = identity.mccString,
+          mnc = identity.mncString,
+          rsrp = info.cellSignalStrength.dbm,
+          rsrq = null,
+          rssi = null,
+          nrarfcn = identity.nrarfcn,
+          band = bandString,
+          isRegistered = info.isRegistered,
+          bandDetails = details,
+          timestampNs = info.timeStamp,
+          collectedAt = now
+        )
+      }
+
+      else -> CellularInfo(networkType = NetworkType.UNKNOWN, collectedAt = now)
+    }
+  }
+
   private fun updateCellularInfo() {
     updatePermissionState()
     if (ContextCompat.checkSelfPermission(
@@ -321,163 +400,9 @@ class MainActivity : ComponentActivity() {
 
     try {
       val all = telephonyManager.allCellInfo ?: emptyList<CellInfo>()
-      val infos = all.filter { it.isRegistered }.map { info ->
-        when (info) {
-          is CellInfoLte -> {
-            val identity = info.cellIdentity
-            val bands = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) identity.bands else intArrayOf()
-            var bandString = if (bands.isNotEmpty()) "B${bands.joinToString(", ")}" else null
+      val infos = all.filter { it.isRegistered }.map { convertToCellularInfo(it, now) }
 
-            if (bandString == null) {
-              val (b, _) = CarrierUtils.getEarfcnDetails(fcnConfig, identity.earfcn)
-              if (b != null) {
-                bandString = b
-              }
-            }
-
-            val carrierKey = CarrierUtils.getCarrierName(identity.mccString, identity.mncString)
-            val details = carrierKey?.let { key ->
-              bandsConfig?.carriers?.get("4G")?.getBandsByCarrier(key)?.find { b ->
-                bands.any { it.toString() == b.band.replace("B", "").split("/").first() }
-              }
-            }
-
-            CellularInfo(
-              networkType = NetworkType.LTE,
-              providerName = telephonyManager.networkOperatorName,
-              mcc = identity.mccString,
-              mnc = identity.mncString,
-              rsrp = info.cellSignalStrength.dbm,
-              rsrq = info.cellSignalStrength.rsrq,
-              rssi = info.cellSignalStrength.rssi,
-              earfcn = identity.earfcn,
-              bandwidth = identity.bandwidth,
-              band = bandString,
-              isRegistered = true,
-              bandDetails = details,
-              timestampNs = info.timeStamp,
-              collectedAt = now
-            )
-          }
-
-          is CellInfoNr -> {
-            val identity = info.cellIdentity as CellIdentityNr
-            val bands = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) identity.bands else intArrayOf()
-            var bandString = if (bands.isNotEmpty()) "n${bands.joinToString(", ")}" else null
-
-            if (bandString == null) {
-              val (b, _) = CarrierUtils.getNrfcnDetails(fcnConfig, identity.nrarfcn)
-              if (b != null) {
-                bandString = b
-              }
-            }
-
-            val carrierKey = CarrierUtils.getCarrierName(identity.mccString, identity.mncString)
-            val details = carrierKey?.let { key ->
-              bandsConfig?.carriers?.get("5G")?.getBandsByCarrier(key)?.find { b ->
-                bands.any { it.toString() == b.band.replace("n", "") }
-              }
-            }
-
-            CellularInfo(
-              networkType = NetworkType.NR,
-              providerName = telephonyManager.networkOperatorName,
-              mcc = identity.mccString,
-              mnc = identity.mncString,
-              rsrp = info.cellSignalStrength.dbm,
-              rsrq = null,
-              rssi = null,
-              nrarfcn = identity.nrarfcn,
-              band = bandString,
-              isRegistered = true,
-              bandDetails = details,
-              timestampNs = info.timeStamp,
-              collectedAt = now
-            )
-          }
-
-          else -> CellularInfo(networkType = NetworkType.UNKNOWN, collectedAt = now)
-        }
-      }
-
-      val unregistered = all.filter { !it.isRegistered }.map { info ->
-        when (info) {
-          is CellInfoLte -> {
-            val identity = info.cellIdentity
-            val bands = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) identity.bands else intArrayOf()
-            var bandString = if (bands.isNotEmpty()) "B${bands.joinToString(", ")}" else null
-
-            if (bandString == null) {
-              val (b, _) = CarrierUtils.getEarfcnDetails(fcnConfig, identity.earfcn)
-              if (b != null) {
-                bandString = b
-              }
-            }
-
-            val carrierKey = CarrierUtils.getCarrierName(identity.mccString, identity.mncString)
-            val details = carrierKey?.let { key ->
-              bandsConfig?.carriers?.get("4G")?.getBandsByCarrier(key)?.find { b ->
-                bands.any { it.toString() == b.band.replace("B", "").split("/").first() }
-              }
-            }
-
-            CellularInfo(
-              networkType = NetworkType.LTE,
-              providerName = telephonyManager.networkOperatorName,
-              mcc = identity.mccString,
-              mnc = identity.mncString,
-              rsrp = info.cellSignalStrength.dbm,
-              rsrq = info.cellSignalStrength.rsrq,
-              rssi = info.cellSignalStrength.rssi,
-              earfcn = identity.earfcn,
-              bandwidth = identity.bandwidth,
-              band = bandString,
-              isRegistered = info.isRegistered,
-              bandDetails = details,
-              timestampNs = info.timeStamp,
-              collectedAt = now
-            )
-          }
-
-          is CellInfoNr -> {
-            val identity = info.cellIdentity as CellIdentityNr
-            val bands = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) identity.bands else intArrayOf()
-            var bandString = if (bands.isNotEmpty()) "n${bands.joinToString(", ")}" else null
-
-            if (bandString == null) {
-              val (b, _) = CarrierUtils.getNrfcnDetails(fcnConfig, identity.nrarfcn)
-              if (b != null) {
-                bandString = b
-              }
-            }
-
-            val carrierKey = CarrierUtils.getCarrierName(identity.mccString, identity.mncString)
-            val details = carrierKey?.let { key ->
-              bandsConfig?.carriers?.get("5G")?.getBandsByCarrier(key)?.find { b ->
-                bands.any { it.toString() == b.band.replace("n", "") }
-              }
-            }
-
-            CellularInfo(
-              networkType = NetworkType.NR,
-              providerName = telephonyManager.networkOperatorName,
-              mcc = identity.mccString,
-              mnc = identity.mncString,
-              rsrp = info.cellSignalStrength.dbm,
-              rsrq = null,
-              rssi = null,
-              nrarfcn = identity.nrarfcn,
-              band = bandString,
-              isRegistered = false,
-              bandDetails = details,
-              timestampNs = info.timeStamp,
-              collectedAt = now
-            )
-          }
-
-          else -> CellularInfo(networkType = NetworkType.UNKNOWN, collectedAt = now)
-        }
-      }
+      val unregistered = all.filter { !it.isRegistered }.map { convertToCellularInfo(it, now) }
 
       neighborCellCount.intValue = all.size - infos.size
 
