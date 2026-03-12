@@ -403,9 +403,13 @@ class MainActivity : ComponentActivity() {
           }
         }
 
-        val rsrp = signalStrength.dbm.takeIf { it != CellInfo.UNAVAILABLE }
-        val rsrq = signalStrength.ssRsrq.takeIf { it != CellInfo.UNAVAILABLE }
-        val sinr = signalStrength.ssSinr.takeIf { it != CellInfo.UNAVAILABLE }
+        val rsrp = (signalStrength.ssRsrp.takeIf { it != CellInfo.UNAVAILABLE }
+          ?: signalStrength.csiRsrp.takeIf { it != CellInfo.UNAVAILABLE }
+          ?: signalStrength.dbm.takeIf { it != CellInfo.UNAVAILABLE })
+        val rsrq = (signalStrength.ssRsrq.takeIf { it != CellInfo.UNAVAILABLE }
+          ?: signalStrength.csiRsrq.takeIf { it != CellInfo.UNAVAILABLE })
+        val sinr = (signalStrength.ssSinr.takeIf { it != CellInfo.UNAVAILABLE }
+          ?: signalStrength.csiSinr.takeIf { it != CellInfo.UNAVAILABLE })
 
         CellularInfo(
           networkType = NetworkType.NR,
@@ -699,17 +703,22 @@ fun CellularInfoCard(info: CellularInfo, fcnConfig: FCN?, neighborCellCount: Int
 
       Row(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.weight(1f)) {
-          Text(text = "RSRP: ${info.rsrp ?: "N/A"} dBm")
-          Text(text = "RSRQ: ${info.rsrq?.let { "$it dB" } ?: "N/A"}")
+//          Text(text = "RSRP: ${info.rsrp ?: "N/A"} dBm")
+//          Text(text = "RSRQ: ${info.rsrq?.let { "$it dB" } ?: "N/A"}")
+          val rsrp = info.rsrp?.let { "RSRP: $it dBm" } ?: ""
+          val rsrq = info.rsrq?.let { "RSRQ: $it dB" } ?: ""
+          Text(text = rsrp + (if (rsrq.isNotEmpty()) " / $rsrq" else ""))
+//          Text(text = "RSRP: ${info.rsrp?.let { "$it dBm" } ?: "N/A"}")
+//          Text(text = "RSRQ: ${info.rsrq?.let { "$it dB" } ?: "N/A"}")
         }
-        Column(modifier = Modifier.weight(1f)) {
-          if (info.rssi != null) {
-            Text(text = "RSSI: ${info.rssi} dBm")
-          }
-          if (info.sinr != null) {
-            Text(text = "SINR: ${info.sinr} dB")
-          }
-        }
+//        Column(modifier = Modifier.weight(1f)) {
+//          if (info.rssi != null) {
+//            Text(text = "RSSI: ${info.rssi} dBm")
+//          }
+//          if (info.sinr != null) {
+//            Text(text = "SINR: ${info.sinr} dB")
+//          }
+//        }
       }
 
       if (info.networkType == NetworkType.LTE) {
