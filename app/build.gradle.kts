@@ -1,4 +1,4 @@
-import java.util.Properties
+import java.util.*
 
 plugins {
   id("com.android.application")
@@ -8,7 +8,8 @@ plugins {
 }
 
 val secret = Properties().apply {
-  load(project.rootProject.file("local.properties").inputStream())
+  if (project.rootProject.file("local.properties").exists())
+    load(project.rootProject.file("local.properties").inputStream())
 }
 
 android {
