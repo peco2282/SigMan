@@ -338,6 +338,7 @@ class MainActivity : ComponentActivity() {
           rssi = info.cellSignalStrength.rssi.takeIf { it != CellInfo.UNAVAILABLE },
           sinr = info.cellSignalStrength.rssnr.takeIf { it != CellInfo.UNAVAILABLE },
           earfcn = identity.earfcn,
+          pci = identity.pci.takeIf { it != CellInfo.UNAVAILABLE },
           bandwidth = identity.bandwidth,
           band = bandString,
           isRegistered = info.isRegistered,
@@ -381,6 +382,7 @@ class MainActivity : ComponentActivity() {
           rssi = null, // RSSI is not directly available in CellSignalStrengthNr
           sinr = sinr,
           nrarfcn = identity.nrarfcn,
+          pci = identity.pci.takeIf { it != CellInfo.UNAVAILABLE },
           band = bandString,
           isRegistered = info.isRegistered,
           bandDetails = details,
@@ -639,6 +641,10 @@ fun CellularInfoCard(info: CellularInfo, fcnConfig: FCN?, neighborCellCount: Int
       } else if (info.networkType == NetworkType.NR) {
         val bw = CarrierUtils.getNrBandWidth(fcnConfig, info.nrarfcn).second
         Text(text = "NR-ARFCN: ${info.nrarfcn}" + (bw?.let { " / BW: %.1f MHz".format(it) } ?: ""))
+      }
+
+      if (info.pci != null) {
+        Text(text = "PCI: ${info.pci}")
       }
 //
 //      val sdf = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.getDefault())

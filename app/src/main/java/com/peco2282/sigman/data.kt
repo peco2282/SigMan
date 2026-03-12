@@ -58,6 +58,7 @@ data class CellularInfo(
   val sinr: Int? = null,
   val earfcn: Int? = null,
   val nrarfcn: Int? = null,
+  val pci: Int? = null,
   val isRegistered: Boolean = false,
   val bandDetails: BandInfo? = null, // bands.jsonからの詳細情報
   val timestampNs: Long = 0L, // CellInfo.timestamp から取得されるナノ秒
