@@ -1,8 +1,14 @@
+import java.util.Properties
+
 plugins {
   id("com.android.application")
   id("org.jetbrains.kotlin.android")
   id("org.jetbrains.kotlin.plugin.compose")
   kotlin("plugin.serialization")
+}
+
+val secret = Properties().apply {
+  load(project.rootProject.file("local.properties").inputStream())
 }
 
 android {
@@ -14,23 +20,33 @@ android {
     minSdk = 29
     targetSdk = 36
     versionCode = 1
-    versionName = "1.2"
+    versionName = System.getenv("GITHUB_REF_NAME") ?: "v1.2"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }
 
+  signingConfigs {
+    create("release") {
+      storeFile = file(System.getenv("RELEASE_STORE_FILE") ?: "signing-key.jks")
+      storePassword = System.getenv("RELEASE_STORE_PASSWORD") ?: secret["store.password"].toString()
+      keyAlias = System.getenv("RELEASE_KEY_ALIAS") ?: secret["key.alias"].toString()
+      keyPassword = System.getenv("RELEASE_KEY_PASSWORD") ?: secret["key.password"].toString()
+    }
+  }
+
   buildTypes {
     release {
+      signingConfig = signingConfigs.getByName("release")
       isMinifyEnabled = false
       proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
     }
   }
   compileOptions {
-    sourceCompatibility = JavaVersion.VERSION_11
-    targetCompatibility = JavaVersion.VERSION_11
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
   }
   kotlinOptions {
-    jvmTarget = "11"
+    jvmTarget = "17"
   }
   buildFeatures {
     compose = true
