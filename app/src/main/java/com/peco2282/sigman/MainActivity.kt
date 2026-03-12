@@ -24,11 +24,11 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
@@ -152,12 +152,43 @@ class MainActivity : ComponentActivity() {
   private val bandsConfig: BandsConfig? by lazy { AssetsLoader.loadBands(this) }
   private val fcnConfig: FCN? by lazy { AssetsLoader.loadFcn(this) }
 
+  @OptIn(ExperimentalMaterial3Api::class)
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
     enableEdgeToEdge()
     setContent {
       SigManTheme {
-        Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
+        var showMenu by remember { mutableStateOf(false) }
+        var showChangelog by remember { mutableStateOf(false) }
+
+        Scaffold(
+          modifier = Modifier.fillMaxSize(),
+          topBar = {
+            TopAppBar(
+              title = { Text("") },
+              actions = {
+                IconButton(onClick = { showMenu = true }) {
+                  Icon(Icons.Default.MoreVert, contentDescription = "Menu")
+                }
+                DropdownMenu(
+                  expanded = showMenu,
+                  onDismissRequest = { showMenu = false }
+                ) {
+                  DropdownMenuItem(
+                    text = { Text("更新履歴") },
+                    onClick = {
+                      showMenu = false
+                      showChangelog = true
+                    },
+                    leadingIcon = {
+                      Icon(Icons.Default.Info, contentDescription = null)
+                    }
+                  )
+                }
+              }
+            )
+          }
+        ) { innerPadding ->
           val context = displayState.value
           if (!context.hasLocationPermission || !context.hasPhoneStatePermission || !context.isLocationEnabled) {
             PermissionRequiredView(
@@ -176,6 +207,10 @@ class MainActivity : ComponentActivity() {
               neighborCellCount.intValue,
               fcnConfig
             )
+          }
+
+          if (showChangelog) {
+            ChangelogDialog(onDismiss = { showChangelog = false })
           }
         }
       }
@@ -425,6 +460,46 @@ class MainActivity : ComponentActivity() {
       Log.e(TAG, "SecurityException: ${e.message}")
     }
   }
+}
+
+@Composable
+fun ChangelogDialog(onDismiss: () -> Unit) {
+  val changelogs = listOf(
+    "v1.3" to listOf("近隣セル情報の表示機能を追加", "デザインの微調整"),
+    "v1.2" to listOf("RSRPの表示追加", "無効値の場合の対応"),
+    "v1.1" to listOf("5G (NR) の情報表示に対応", "バンド詳細情報の拡充"),
+    "v1.0" to listOf("初回リリース", "LTE情報の基本表示機能")
+  )
+
+  AlertDialog(
+    onDismissRequest = onDismiss,
+    title = { Text("更新履歴") },
+    text = {
+      LazyColumn {
+        items(changelogs) { (version, features) ->
+          Column(modifier = Modifier.padding(vertical = 8.dp)) {
+            Text(
+              text = version,
+              style = MaterialTheme.typography.titleMedium,
+              color = MaterialTheme.colorScheme.primary
+            )
+            features.forEach { feature ->
+              Text(
+                text = "・$feature",
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.padding(start = 8.dp)
+              )
+            }
+          }
+        }
+      }
+    },
+    confirmButton = {
+      TextButton(onClick = onDismiss) {
+        Text("閉じる")
+      }
+    }
+  )
 }
 
 @Composable
