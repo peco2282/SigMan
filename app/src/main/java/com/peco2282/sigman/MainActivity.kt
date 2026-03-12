@@ -469,7 +469,7 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun ChangelogDialog(onDismiss: () -> Unit) {
   val changelogs = listOf(
-    "v1.3" to listOf("更新履歴ダイアログとメニューオプションの追加", "セル情報への PCI (Physical Cell ID) 追加", "セル情報への SINR (Signal-to-Interference-plus-Noise Ratio) 追加"),
+    "v1.3" to listOf("更新履歴ダイアログとメニューオプションの追加", "セル情報への PCI (Physical Cell ID) 追加",),
 //    "v1.2.2" to listOf("デプロイ用 GitHub Actions ワークフローの修正", "リファクタリング: セル情報変換メソッドの共通化"),
 //    "v1.2.1" to listOf("`local.properties` の読み込みを条件付きに修正", "GitHub Actions による APK デプロイワークフロー追加"),
     "v1.2" to listOf("RSRQ および RSSI 信号強度メトリクスの追加"),
