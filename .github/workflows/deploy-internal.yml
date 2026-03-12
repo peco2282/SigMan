@@ -38,6 +38,7 @@ jobs:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.VPS_PORT }}
           source: "app/build/outputs/apk/debug/sigman-*.apk"
           target: "/var/www/download-app/sigman/"
           strip_components: 5
