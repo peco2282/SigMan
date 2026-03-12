@@ -333,9 +333,10 @@ class MainActivity : ComponentActivity() {
           providerName = telephonyManager.networkOperatorName,
           mcc = identity.mccString,
           mnc = identity.mncString,
-          rsrp = info.cellSignalStrength.dbm,
-          rsrq = info.cellSignalStrength.rsrq,
-          rssi = info.cellSignalStrength.rssi,
+          rsrp = info.cellSignalStrength.dbm.takeIf { it != CellInfo.UNAVAILABLE },
+          rsrq = info.cellSignalStrength.rsrq.takeIf { it != CellInfo.UNAVAILABLE },
+          rssi = info.cellSignalStrength.rssi.takeIf { it != CellInfo.UNAVAILABLE },
+          sinr = info.cellSignalStrength.rssnr.takeIf { it != CellInfo.UNAVAILABLE },
           earfcn = identity.earfcn,
           bandwidth = identity.bandwidth,
           band = bandString,
@@ -348,6 +349,7 @@ class MainActivity : ComponentActivity() {
 
       is CellInfoNr -> {
         val identity = info.cellIdentity as CellIdentityNr
+        val signalStrength = info.cellSignalStrength as CellSignalStrengthNr
         val bands = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) identity.bands else intArrayOf()
         var bandString = if (bands.isNotEmpty()) "n${bands.joinToString(", ")}" else null
 
@@ -365,14 +367,19 @@ class MainActivity : ComponentActivity() {
           }
         }
 
+        val rsrp = signalStrength.dbm.takeIf { it != CellInfo.UNAVAILABLE }
+        val rsrq = signalStrength.ssRsrq.takeIf { it != CellInfo.UNAVAILABLE }
+        val sinr = signalStrength.ssSinr.takeIf { it != CellInfo.UNAVAILABLE }
+
         CellularInfo(
           networkType = NetworkType.NR,
           providerName = telephonyManager.networkOperatorName,
           mcc = identity.mccString,
           mnc = identity.mncString,
-          rsrp = info.cellSignalStrength.dbm,
-          rsrq = null,
-          rssi = null,
+          rsrp = rsrp,
+          rsrq = rsrq,
+          rssi = null, // RSSI is not directly available in CellSignalStrengthNr
+          sinr = sinr,
           nrarfcn = identity.nrarfcn,
           band = bandString,
           isRegistered = info.isRegistered,
@@ -610,7 +617,21 @@ fun CellularInfoCard(info: CellularInfo, fcnConfig: FCN?, neighborCellCount: Int
       HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
       Text(text = "Provider: ${info.providerName ?: "Unknown"}")
-      Text(text = "RSRP: ${info.rsrp} dBm  /  RSRQ: ${info.rsrq} dB")
+
+      Row(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.weight(1f)) {
+          Text(text = "RSRP: ${info.rsrp ?: "N/A"} dBm")
+          Text(text = "RSRQ: ${info.rsrq?.let { "$it dB" } ?: "N/A"}")
+        }
+        Column(modifier = Modifier.weight(1f)) {
+          if (info.rssi != null) {
+            Text(text = "RSSI: ${info.rssi} dBm")
+          }
+          if (info.sinr != null) {
+            Text(text = "SINR: ${info.sinr} dB")
+          }
+        }
+      }
 
       if (info.networkType == NetworkType.LTE) {
         val bw = CarrierUtils.getBandWidth(fcnConfig, info.earfcn).second

@@ -55,6 +55,7 @@ data class CellularInfo(
   val rsrp: Int? = null,
   val rsrq: Int? = null,
   val rssi: Int? = null,
+  val sinr: Int? = null,
   val earfcn: Int? = null,
   val nrarfcn: Int? = null,
   val isRegistered: Boolean = false,
