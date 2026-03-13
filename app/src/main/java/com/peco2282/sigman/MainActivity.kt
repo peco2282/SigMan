@@ -471,7 +471,7 @@ fun ChangelogDialog(onDismiss: () -> Unit) {
   val changelogs = listOf(
     "v1.3" to listOf("更新履歴ダイアログとメニューオプションの追加", "セル情報への PCI (Physical Cell ID) 追加",),
 //    "v1.2.2" to listOf("デプロイ用 GitHub Actions ワークフローの修正", "リファクタリング: セル情報変換メソッドの共通化"),
-//    "v1.2.1" to listOf("`local.properties` の読み込みを条件付きに修正", "GitHub Actions による APK デプロイワークフロー追加"),
+    "v1.2.1" to listOf("NRセル使用時のRSRQの未取得を修正"),
     "v1.2" to listOf("RSRQ および RSSI 信号強度メトリクスの追加"),
     "v1.1" to listOf("5G (NR) の情報表示に対応", "バンド詳細情報の拡充", "NR-ARFCN サポートの追加"),
     "v1.0" to listOf("初回リリース", "LTE情報の基本表示機能")
