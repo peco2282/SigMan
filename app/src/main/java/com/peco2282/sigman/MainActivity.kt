@@ -21,6 +21,8 @@ import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -469,6 +471,8 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun ChangelogDialog(onDismiss: () -> Unit) {
   val changelogs = listOf(
+    "v1.3.2" to listOf("UIレイアウトを2列表示に変更"),
+    "v1.3.1" to listOf("UI上のラベル幅を固定"),
     "v1.3" to listOf("更新履歴ダイアログとメニューオプションの追加", "セル情報への PCI (Physical Cell ID) 追加",),
 //    "v1.2.2" to listOf("デプロイ用 GitHub Actions ワークフローの修正", "リファクタリング: セル情報変換メソッドの共通化"),
     "v1.2.1" to listOf("NRセル使用時のRSRQの未取得を修正"),
@@ -636,14 +640,34 @@ fun CellularInfoList(
 }
 
 @Composable
+fun InfoRow(label: String, value: String, modifier: Modifier = Modifier) {
+  Row(modifier = modifier.padding(vertical = 2.dp)) {
+    Text(
+      text = label,
+      modifier = Modifier.width(75.dp),
+      style = MaterialTheme.typography.bodyMedium,
+      color = MaterialTheme.colorScheme.secondary
+    )
+    Text(
+      text = ": $value",
+      style = MaterialTheme.typography.bodyMedium,
+      color = MaterialTheme.colorScheme.onSurface
+    )
+  }
+}
+
+@Composable
 fun CellularInfoCard(info: CellularInfo, fcnConfig: FCN?, neighborCellCount: Int = 0) {
   Card(
     modifier = Modifier
       .padding(vertical = 4.dp)
-      .fillMaxSize()
+      .fillMaxWidth()
   ) {
-    Column(modifier = Modifier.padding(12.dp)) {
-      Row(verticalAlignment = Alignment.CenterVertically) {
+    Column(modifier = Modifier.padding(16.dp)) {
+      Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.fillMaxWidth()
+      ) {
         val bandDisplay = if (info.band.isNullOrEmpty()) {
           when (info.networkType) {
             NetworkType.LTE -> CarrierUtils.getEarfcnDetails(fcnConfig, info.earfcn).first ?: ""
@@ -659,10 +683,11 @@ fun CellularInfoCard(info: CellularInfo, fcnConfig: FCN?, neighborCellCount: Int
         )
         Spacer(modifier = Modifier.weight(1f))
         if (info.isRegistered) {
-          Text("Neighbor Cells: $neighborCellCount")
-          Spacer(modifier = Modifier.width(8.dp))
           Badge(containerColor = MaterialTheme.colorScheme.primaryContainer) {
-            Text("Connected")
+            Text(
+              text = "Connected",
+              modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+            )
           }
         }
       }
@@ -682,64 +707,110 @@ fun CellularInfoCard(info: CellularInfo, fcnConfig: FCN?, neighborCellCount: Int
         Text(
           text = "Frequency: $frequency",
           style = MaterialTheme.typography.bodyLarge,
-          color = MaterialTheme.colorScheme.primary
+          color = MaterialTheme.colorScheme.primary,
+          modifier = Modifier.padding(top = 4.dp)
         )
-        Text(
-          text = info.bandDetails?.features ?: detailInfo?.let {
-            when (it) {
-              is EarfcnChild -> it.note ?: ""
-              is NrfcnChild -> it.note ?: ""
-              else -> ""
-            }
-          } ?: "",
-          style = MaterialTheme.typography.bodyMedium,
-          color = MaterialTheme.colorScheme.secondary
-        )
-      }
-
-      HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-
-      Text(text = "Provider: ${info.providerName ?: "Unknown"}")
-
-      Row(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.weight(1f)) {
-//          Text(text = "RSRP: ${info.rsrp ?: "N/A"} dBm")
-//          Text(text = "RSRQ: ${info.rsrq?.let { "$it dB" } ?: "N/A"}")
-          val rsrp = info.rsrp?.let { "RSRP: $it dBm" } ?: ""
-          val rsrq = info.rsrq?.let { "RSRQ: $it dB" } ?: ""
-          Text(text = rsrp + (if (rsrq.isNotEmpty()) " / $rsrq" else ""))
-//          Text(text = "RSRP: ${info.rsrp?.let { "$it dBm" } ?: "N/A"}")
-//          Text(text = "RSRQ: ${info.rsrq?.let { "$it dB" } ?: "N/A"}")
+        val note = info.bandDetails?.features ?: detailInfo?.let {
+          when (it) {
+            is EarfcnChild -> it.note ?: ""
+            is NrfcnChild -> it.note ?: ""
+            else -> ""
+          }
+        } ?: ""
+        if (note.isNotEmpty()) {
+          Text(
+            text = note,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.secondary
+          )
         }
-//        Column(modifier = Modifier.weight(1f)) {
-//          if (info.rssi != null) {
-//            Text(text = "RSSI: ${info.rssi} dBm")
-//          }
-//          if (info.sinr != null) {
-//            Text(text = "SINR: ${info.sinr} dB")
-//          }
-//        }
       }
 
-      if (info.networkType == NetworkType.LTE) {
-        val bw = CarrierUtils.getBandWidth(fcnConfig, info.earfcn).second
-        Text(text = "EARFCN: ${info.earfcn}" + (bw?.let { " / BW: %.1f MHz".format(it) } ?: ""))
-      } else if (info.networkType == NetworkType.NR) {
-        val bw = CarrierUtils.getNrBandWidth(fcnConfig, info.nrarfcn).second
-        Text(text = "NR-ARFCN: ${info.nrarfcn}" + (bw?.let { " / BW: %.1f MHz".format(it) } ?: ""))
-      }
+      HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
 
-      if (info.pci != null) {
-        Text(text = "PCI: ${info.pci}")
+      InfoRow(label = "Provider", value = info.providerName ?: "Unknown")
+
+      @OptIn(ExperimentalLayoutApi::class)
+      FlowRow(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween
+      ) {
+        info.rsrp?.let {
+            InfoRow(
+              label = "RSRP",
+              value = "$it dBm",
+              modifier = Modifier.fillMaxWidth(0.5f)
+            )
+          }
+          info.rsrq?.let {
+            InfoRow(
+              label = "RSRQ",
+              value = "$it dB",
+              modifier = Modifier.fillMaxWidth(0.5f)
+            )
+          }
+          info.rssi?.let {
+            InfoRow(
+              label = "RSSI",
+              value = "$it dBm",
+              modifier = Modifier.fillMaxWidth(0.5f)
+            )
+          }
+          info.sinr?.let {
+            InfoRow(
+              label = "SINR",
+              value = "$it dB",
+              modifier = Modifier.fillMaxWidth(0.5f)
+            )
+          }
+
+          if (info.networkType == NetworkType.LTE) {
+            InfoRow(
+              label = "EARFCN",
+              value = info.earfcn.toString(),
+              modifier = Modifier.fillMaxWidth(0.5f)
+            )
+            val bw = CarrierUtils.getBandWidth(fcnConfig, info.earfcn).second
+            bw?.let {
+              InfoRow(
+                label = "Bandwidth",
+                value = "%.1f MHz".format(it),
+                modifier = Modifier.fillMaxWidth(0.5f)
+              )
+            }
+          } else if (info.networkType == NetworkType.NR) {
+            InfoRow(
+              label = "NR-ARFCN",
+              value = info.nrarfcn.toString(),
+              modifier = Modifier.fillMaxWidth(0.5f)
+            )
+            val bw = CarrierUtils.getNrBandWidth(fcnConfig, info.nrarfcn).second
+            bw?.let {
+              InfoRow(
+                label = "Bandwidth",
+                value = "%.1f MHz".format(it),
+                modifier = Modifier.fillMaxWidth(0.5f)
+              )
+            }
+          }
+
+          if (info.pci != null) {
+            InfoRow(
+              label = "PCI",
+              value = info.pci.toString(),
+              modifier = Modifier.fillMaxWidth(0.5f)
+            )
+          }
+        }
+
+      if (info.isRegistered && neighborCellCount > 0) {
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+          text = "Neighbor Cells: $neighborCellCount",
+          style = MaterialTheme.typography.labelMedium,
+          color = MaterialTheme.colorScheme.outline
+        )
       }
-//
-//      val sdf = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.getDefault())
-//      val collectedStr = sdf.format(java.util.Date(info.collectedAt))
-//      Text(
-//        text = "Collected at: $collectedStr (mTimestamp: ${info.timestampNs})",
-//        style = MaterialTheme.typography.labelSmall,
-//        color = MaterialTheme.colorScheme.outline
-//      )
     }
   }
 }
