@@ -165,7 +165,7 @@ class MainActivity : ComponentActivity() {
           modifier = Modifier.fillMaxSize(),
           topBar = {
             TopAppBar(
-              title = { Text("") },
+              title = { Text("Cell Info") },
               actions = {
                 IconButton(onClick = { showMenu = true }) {
                   Icon(Icons.Default.MoreVert, contentDescription = "Menu")
