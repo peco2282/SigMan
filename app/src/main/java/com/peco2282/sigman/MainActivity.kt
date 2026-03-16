@@ -471,6 +471,7 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun ChangelogDialog(onDismiss: () -> Unit) {
   val changelogs = listOf(
+    "v1.3.3" to listOf("PCIの表示位置を修正"),
     "v1.3.2" to listOf("UIレイアウトを2列表示に変更"),
     "v1.3.1" to listOf("UI上のラベル幅を固定"),
     "v1.3" to listOf("更新履歴ダイアログとメニューオプションの追加", "セル情報への PCI (Physical Cell ID) 追加",),
@@ -729,7 +730,13 @@ fun CellularInfoCard(info: CellularInfo, fcnConfig: FCN?, neighborCellCount: Int
       HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
 
       InfoRow(label = "Provider", value = info.providerName ?: "Unknown")
-
+      if (info.pci != null) {
+        InfoRow(
+          label = "PCI",
+          value = info.pci.toString(),
+          modifier = Modifier.fillMaxWidth(0.5f)
+        )
+      }
       @OptIn(ExperimentalLayoutApi::class)
       FlowRow(
         modifier = Modifier.fillMaxWidth(),
@@ -792,14 +799,6 @@ fun CellularInfoCard(info: CellularInfo, fcnConfig: FCN?, neighborCellCount: Int
                 modifier = Modifier.fillMaxWidth(0.5f)
               )
             }
-          }
-
-          if (info.pci != null) {
-            InfoRow(
-              label = "PCI",
-              value = info.pci.toString(),
-              modifier = Modifier.fillMaxWidth(0.5f)
-            )
           }
         }
 
