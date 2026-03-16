@@ -44,6 +44,10 @@ class MainActivity : ComponentActivity() {
   private var telephonyCallback: TelephonyCallback? = null
   private var phoneStateListener: PhoneStateListener? = null
 
+  // 最新の情報を保持
+  private var latestServiceState: ServiceState? = null
+  private var latestDisplayInfo: TelephonyDisplayInfo? = null
+
   // Fallback polling (for devices that don't push callbacks reliably)
   private val handler by lazy { Handler(Looper.getMainLooper()) }
   private val pollRunnable = object : Runnable {
@@ -219,12 +223,24 @@ class MainActivity : ComponentActivity() {
       if (telephonyCallback == null) {
         val callback = object : TelephonyCallback(),
           TelephonyCallback.CellInfoListener,
-          TelephonyCallback.SignalStrengthsListener {
+          TelephonyCallback.SignalStrengthsListener,
+          TelephonyCallback.ServiceStateListener,
+          TelephonyCallback.DisplayInfoListener {
           override fun onSignalStrengthsChanged(signalStrength: SignalStrength) {
             updateCellularInfo()
           }
 
           override fun onCellInfoChanged(cellInfo: List<CellInfo>) {
+            updateCellularInfo()
+          }
+
+          override fun onServiceStateChanged(serviceState: ServiceState) {
+            latestServiceState = serviceState
+            updateCellularInfo()
+          }
+
+          override fun onDisplayInfoChanged(telephonyDisplayInfo: TelephonyDisplayInfo) {
+            latestDisplayInfo = telephonyDisplayInfo
             updateCellularInfo()
           }
         }
@@ -245,13 +261,22 @@ class MainActivity : ComponentActivity() {
           override fun onCellInfoChanged(cellInfo: MutableList<CellInfo>?) {
             updateCellularInfo()
           }
+
+          override fun onServiceStateChanged(serviceState: ServiceState?) {
+            latestServiceState = serviceState
+            updateCellularInfo()
+          }
         }
         phoneStateListener = listener
         try {
           @Suppress("DEPRECATION")
           telephonyManager.listen(
             listener,
-            @Suppress("DEPRECATION") (PhoneStateListener.LISTEN_SIGNAL_STRENGTHS or PhoneStateListener.LISTEN_CELL_INFO)
+            @Suppress("DEPRECATION") (
+                PhoneStateListener.LISTEN_SIGNAL_STRENGTHS or
+                    PhoneStateListener.LISTEN_CELL_INFO or
+                    PhoneStateListener.LISTEN_SERVICE_STATE
+                )
           )
         } catch (se: SecurityException) {
           Log.e(TAG, "listen SecurityException: ${se.message}")
@@ -291,9 +316,36 @@ class MainActivity : ComponentActivity() {
   }
 
   private fun convertToCellularInfo(info: CellInfo, now: Long): CellularInfo {
-    return when (info) {
+    val serviceStateStr = when (latestServiceState?.state) {
+      ServiceState.STATE_IN_SERVICE -> "IN_SERVICE"
+      ServiceState.STATE_OUT_OF_SERVICE -> "OUT_OF_SERVICE"
+      ServiceState.STATE_EMERGENCY_ONLY -> "EMERGENCY_ONLY"
+      ServiceState.STATE_POWER_OFF -> "POWER_OFF"
+      else -> null
+    }
+
+    val isEnDcAvailable = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+      latestDisplayInfo?.overrideNetworkType == TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_NSA ||
+          latestDisplayInfo?.overrideNetworkType == TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_ADVANCED
+    } else null
+
+    val dataNetworkType = try {
+      when (telephonyManager.dataNetworkType) {
+        TelephonyManager.NETWORK_TYPE_LTE -> "LTE"
+        TelephonyManager.NETWORK_TYPE_NR -> "NR"
+        TelephonyManager.NETWORK_TYPE_HSPA, TelephonyManager.NETWORK_TYPE_HSPAP -> "HSPA"
+        TelephonyManager.NETWORK_TYPE_EDGE -> "EDGE"
+        TelephonyManager.NETWORK_TYPE_GPRS -> "GPRS"
+        else -> "UNKNOWN"
+      }
+    } catch (se: SecurityException) {
+      "PERMISSION_DENIED"
+    }
+
+    val baseInfo = when (info) {
       is CellInfoLte -> {
         val identity = info.cellIdentity
+        val signalStrength = info.cellSignalStrength
         val bands = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) identity.bands else intArrayOf()
         var bandString = if (bands.isNotEmpty()) "B${bands.joinToString(", ")}" else null
 
@@ -316,13 +368,18 @@ class MainActivity : ComponentActivity() {
           providerName = telephonyManager.networkOperatorName,
           mcc = identity.mccString,
           mnc = identity.mncString,
-          rsrp = info.cellSignalStrength.dbm.takeIf { it != CellInfo.UNAVAILABLE },
-          rsrq = info.cellSignalStrength.rsrq.takeIf { it != CellInfo.UNAVAILABLE },
-          rssi = info.cellSignalStrength.rssi.takeIf { it != CellInfo.UNAVAILABLE },
-          sinr = info.cellSignalStrength.rssnr.takeIf { it != CellInfo.UNAVAILABLE },
-          earfcn = identity.earfcn,
+          rsrp = signalStrength.rsrp.takeIf { it != CellInfo.UNAVAILABLE },
+          rsrq = signalStrength.rsrq.takeIf { it != CellInfo.UNAVAILABLE },
+          rssi = signalStrength.rssi.takeIf { it != CellInfo.UNAVAILABLE },
+          sinr = signalStrength.rssnr.takeIf { it != CellInfo.UNAVAILABLE },
+          rssnr = signalStrength.rssnr.takeIf { it != CellInfo.UNAVAILABLE },
+          cqi = signalStrength.cqi.takeIf { it != CellInfo.UNAVAILABLE },
+          ta = signalStrength.timingAdvance.takeIf { it != CellInfo.UNAVAILABLE },
+          earfcn = identity.earfcn.takeIf { it != CellInfo.UNAVAILABLE },
           pci = identity.pci.takeIf { it != CellInfo.UNAVAILABLE },
-          bandwidth = identity.bandwidth,
+          cid = identity.ci.toLong().takeIf { it != CellInfo.UNAVAILABLE.toLong() },
+          tac = identity.tac.takeIf { it != CellInfo.UNAVAILABLE },
+          bandwidth = identity.bandwidth.takeIf { it != CellInfo.UNAVAILABLE },
           band = bandString,
           isRegistered = info.isRegistered,
           bandDetails = details,
@@ -366,10 +423,12 @@ class MainActivity : ComponentActivity() {
           mnc = identity.mncString,
           rsrp = rsrp,
           rsrq = rsrq,
-          rssi = null, // RSSI is not directly available in CellSignalStrengthNr
+          rssi = null,
           sinr = sinr,
-          nrarfcn = identity.nrarfcn,
+          nrarfcn = identity.nrarfcn.takeIf { it != CellInfo.UNAVAILABLE },
           pci = identity.pci.takeIf { it != CellInfo.UNAVAILABLE },
+          cid = identity.nci.takeIf { it != CellInfo.UNAVAILABLE_LONG },
+          tac = identity.tac.takeIf { it != CellInfo.UNAVAILABLE },
           band = bandString,
           isRegistered = info.isRegistered,
           bandDetails = details,
@@ -378,7 +437,68 @@ class MainActivity : ComponentActivity() {
         )
       }
 
+      is CellInfoWcdma -> {
+        val identity = info.cellIdentity
+        val signalStrength = info.cellSignalStrength
+        CellularInfo(
+          networkType = NetworkType.WCDMA,
+          providerName = telephonyManager.networkOperatorName,
+          mcc = identity.mccString,
+          mnc = identity.mncString,
+          rsrp = signalStrength.dbm.takeIf { it != CellInfo.UNAVAILABLE },
+          rssi = signalStrength.dbm.takeIf { it != CellInfo.UNAVAILABLE },
+          uarfcn = identity.uarfcn.takeIf { it != CellInfo.UNAVAILABLE },
+          psc = identity.psc.takeIf { it != CellInfo.UNAVAILABLE },
+          cid = identity.cid.toLong().takeIf { it != CellInfo.UNAVAILABLE.toLong() },
+          lac = identity.lac.takeIf { it != CellInfo.UNAVAILABLE },
+          isRegistered = info.isRegistered,
+          timestampNs = info.timeStamp,
+          collectedAt = now
+        )
+      }
+
+      is CellInfoGsm -> {
+        val identity = info.cellIdentity
+        val signalStrength = info.cellSignalStrength
+        CellularInfo(
+          networkType = NetworkType.GSM,
+          providerName = telephonyManager.networkOperatorName,
+          mcc = identity.mccString,
+          mnc = identity.mncString,
+          rssi = signalStrength.dbm.takeIf { it != CellInfo.UNAVAILABLE },
+          rsrp = signalStrength.dbm.takeIf { it != CellInfo.UNAVAILABLE },
+          arfcn = identity.arfcn.takeIf { it != CellInfo.UNAVAILABLE },
+          bsic = identity.bsic.takeIf { it != CellInfo.UNAVAILABLE },
+          cid = identity.cid.toLong().takeIf { it != CellInfo.UNAVAILABLE.toLong() },
+          lac = identity.lac.takeIf { it != CellInfo.UNAVAILABLE },
+          ta = signalStrength.timingAdvance.takeIf { it != CellInfo.UNAVAILABLE },
+          isRegistered = info.isRegistered,
+          timestampNs = info.timeStamp,
+          collectedAt = now
+        )
+      }
+
       else -> CellularInfo(networkType = NetworkType.UNKNOWN, collectedAt = now)
+    }
+
+    return try {
+      baseInfo.copy(
+        serviceState = serviceStateStr,
+        roaming = latestServiceState?.roaming,
+        dataNetworkType = dataNetworkType,
+        isManualSelection = latestServiceState?.isManualSelection,
+        operatorAlphaLong = latestServiceState?.operatorAlphaLong,
+        operatorAlphaShort = latestServiceState?.operatorAlphaShort,
+        operatorNumeric = latestServiceState?.operatorNumeric,
+        isEnDcAvailable = isEnDcAvailable
+      )
+    } catch (se: SecurityException) {
+      baseInfo.copy(
+        serviceState = serviceStateStr,
+        roaming = latestServiceState?.roaming,
+        dataNetworkType = dataNetworkType,
+        isEnDcAvailable = isEnDcAvailable
+      )
     }
   }
 

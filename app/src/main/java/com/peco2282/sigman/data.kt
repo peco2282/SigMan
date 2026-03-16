@@ -8,7 +8,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.decodeFromJsonElement
 
-enum class NetworkType { LTE, NR, UNKNOWN, DISCONNECT }
+enum class NetworkType { LTE, NR, WCDMA, GSM, UNKNOWN, DISCONNECT }
 
 @Serializable
 data class BandInfo(
@@ -56,13 +56,35 @@ data class CellularInfo(
   val rsrq: Int? = null,
   val rssi: Int? = null,
   val sinr: Int? = null,
+  val rssnr: Int? = null, // LTE 用 (0.1 dB 単位が多いが、Int)
+  val cqi: Int? = null,
+  val ta: Int? = null, // Timing Advance
   val earfcn: Int? = null,
   val nrarfcn: Int? = null,
+  val arfcn: Int? = null, // GSM
+  val uarfcn: Int? = null, // WCDMA
   val pci: Int? = null,
+  val cid: Long? = null, // Cell Identity (LTE: CI, NR: NCI, GSM: CID, WCDMA: CID)
+  val lac: Int? = null, // GSM/WCDMA
+  val tac: Int? = null, // LTE/NR (Tracking Area Code)
+  val bsic: Int? = null, // GSM
+  val psc: Int? = null, // WCDMA
   val isRegistered: Boolean = false,
   val bandDetails: BandInfo? = null, // bands.jsonからの詳細情報
   val timestampNs: Long = 0L, // CellInfo.timestamp から取得されるナノ秒
-  val collectedAt: Long = 0L // アプリ側で取得した時刻 (System.currentTimeMillis())
+  val collectedAt: Long = 0L, // アプリ側で取得した時刻 (System.currentTimeMillis())
+
+  // --- 追加情報 (TelephonyCallback等から) ---
+  val serviceState: String? = null, // IN_SERVICE, OUT_OF_SERVICE等
+  val roaming: Boolean? = null,
+  val dataNetworkType: String? = null, // LTE, NR, etc.
+  val isManualSelection: Boolean? = null,
+  val operatorAlphaLong: String? = null,
+  val operatorAlphaShort: String? = null,
+  val operatorNumeric: String? = null,
+  val isEnDcAvailable: Boolean? = null, // 5G NSA可用性
+  val isNrAvailable: Boolean? = null,   // 5G可用性
+  val isDcNrRestricted: Boolean? = null // 5G制限
 )
 
 data class DisplayContext(
