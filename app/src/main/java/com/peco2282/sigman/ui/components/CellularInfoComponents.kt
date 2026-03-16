@@ -194,9 +194,9 @@ fun CellularInfoList(
     }
   }
 
-  selectedInfo?.let { info ->
-    CellDetailDialog(info = info, fcnConfig = fcnConfig, onDismiss = { selectedInfo = null })
-  }
+//  selectedInfo?.let { info ->
+//    CellDetailDialog(info = info, fcnConfig = fcnConfig, onDismiss = { selectedInfo = null })
+//  }
 }
 
 @Composable
