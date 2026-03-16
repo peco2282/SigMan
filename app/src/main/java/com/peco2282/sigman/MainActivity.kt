@@ -1,7 +1,6 @@
 package com.peco2282.sigman
 
 import android.Manifest
-import android.app.Activity
 import android.content.Intent
 import android.content.IntentSender
 import android.content.pm.PackageManager
@@ -20,24 +19,13 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.core.content.ContextCompat
 import com.google.android.gms.common.api.ResolvableApiException
 import com.google.android.gms.location.*
+import com.peco2282.sigman.ui.components.SigManApp
 import com.peco2282.sigman.ui.theme.SigManTheme
 
 
@@ -83,7 +71,7 @@ class MainActivity : ComponentActivity() {
   private val resolutionLauncher: ActivityResultLauncher<IntentSenderRequest> = registerForActivityResult(
     ActivityResultContracts.StartIntentSenderForResult()
   ) { result ->
-    if (result.resultCode == Activity.RESULT_OK) {
+    if (result.resultCode == RESULT_OK) {
       updatePermissionState()
       startUpdating()
     } else {
@@ -160,61 +148,14 @@ class MainActivity : ComponentActivity() {
     enableEdgeToEdge()
     setContent {
       SigManTheme {
-        var showMenu by remember { mutableStateOf(false) }
-        var showChangelog by remember { mutableStateOf(false) }
-
-        Scaffold(
-          modifier = Modifier.fillMaxSize(),
-          topBar = {
-            TopAppBar(
-              title = { Text("Cell Info") },
-              actions = {
-                IconButton(onClick = { showMenu = true }) {
-                  Icon(Icons.Default.MoreVert, contentDescription = "Menu")
-                }
-                DropdownMenu(
-                  expanded = showMenu,
-                  onDismissRequest = { showMenu = false }
-                ) {
-                  DropdownMenuItem(
-                    text = { Text("更新履歴") },
-                    onClick = {
-                      showMenu = false
-                      showChangelog = true
-                    },
-                    leadingIcon = {
-                      Icon(Icons.Default.Info, contentDescription = null)
-                    }
-                  )
-                }
-              }
-            )
-          }
-        ) { innerPadding ->
-          val context = displayState.value
-          if (!context.hasLocationPermission || !context.hasPhoneStatePermission || !context.isLocationEnabled) {
-            PermissionRequiredView(
-              hasLocationPermission = context.hasLocationPermission,
-              hasPhoneStatePermission = context.hasPhoneStatePermission,
-              isLocationEnabled = context.isLocationEnabled,
-              onPermissionRequest = { checkPermissionAndRun() },
-              onOpenSettings = { openAppSettings() },
-              onOpenLocationSettings = { openLocationSettings() },
-              modifier = Modifier.padding(innerPadding)
-            )
-          } else {
-            CellularInfoList(
-              displayContext = context,
-              modifier = Modifier.padding(innerPadding),
-              neighborCellCount.intValue,
-              fcnConfig
-            )
-          }
-
-          if (showChangelog) {
-            ChangelogDialog(onDismiss = { showChangelog = false })
-          }
-        }
+        SigManApp(
+          displayState = displayState.value,
+          neighborCellCount = neighborCellCount.intValue,
+          fcnConfig = fcnConfig,
+          onPermissionRequest = { checkPermissionAndRun() },
+          onOpenSettings = { openAppSettings() },
+          onOpenLocationSettings = { openLocationSettings() }
+        )
       }
     }
 
@@ -237,8 +178,10 @@ class MainActivity : ComponentActivity() {
     val locationPermission = Manifest.permission.ACCESS_FINE_LOCATION
     val phoneStatePermission = Manifest.permission.READ_PHONE_STATE
 
-    val locationGranted = ContextCompat.checkSelfPermission(this, locationPermission) == PackageManager.PERMISSION_GRANTED
-    val phoneStateGranted = ContextCompat.checkSelfPermission(this, phoneStatePermission) == PackageManager.PERMISSION_GRANTED
+    val locationGranted =
+      ContextCompat.checkSelfPermission(this, locationPermission) == PackageManager.PERMISSION_GRANTED
+    val phoneStateGranted =
+      ContextCompat.checkSelfPermission(this, phoneStatePermission) == PackageManager.PERMISSION_GRANTED
 
     if (locationGranted && phoneStateGranted) {
       updatePermissionState()
@@ -264,7 +207,10 @@ class MainActivity : ComponentActivity() {
     ) == PackageManager.PERMISSION_GRANTED
 
     if (!locationGranted || !phoneStateGranted) {
-      Log.w(TAG, "Cannot start updating: permissions not granted (Location: $locationGranted, PhoneState: $phoneStateGranted)")
+      Log.w(
+        TAG,
+        "Cannot start updating: permissions not granted (Location: $locationGranted, PhoneState: $phoneStateGranted)"
+      )
       return
     }
 
@@ -476,352 +422,5 @@ class MainActivity : ComponentActivity() {
       carrierBands = unregistered,
       lastUpdated = System.currentTimeMillis()
     )
-  }
-}
-
-@Composable
-fun ChangelogDialog(onDismiss: () -> Unit) {
-  val changelogs = listOf(
-    "v1.3.4" to listOf("セル情報の更新性を向上", "Neighbor Cellの更新タイミングを改善"),
-    "v1.3.3" to listOf("PCIの表示位置を修正"),
-    "v1.3.2" to listOf("UIレイアウトを2列表示に変更"),
-    "v1.3.1" to listOf("UI上のラベル幅を固定"),
-    "v1.3" to listOf("更新履歴ダイアログとメニューオプションの追加", "セル情報への PCI (Physical Cell ID) 追加",),
-//    "v1.2.2" to listOf("デプロイ用 GitHub Actions ワークフローの修正", "リファクタリング: セル情報変換メソッドの共通化"),
-    "v1.2.1" to listOf("NRセル使用時のRSRQの未取得を修正"),
-    "v1.2" to listOf("RSRQ および RSSI 信号強度メトリクスの追加"),
-    "v1.1" to listOf("5G (NR) の情報表示に対応", "バンド詳細情報の拡充", "NR-ARFCN サポートの追加"),
-    "v1.0" to listOf("初回リリース", "LTE情報の基本表示機能")
-  )
-
-  AlertDialog(
-    onDismissRequest = onDismiss,
-    title = { Text("更新履歴") },
-    text = {
-      LazyColumn {
-        items(changelogs) { (version, features) ->
-          Column(modifier = Modifier.padding(vertical = 8.dp)) {
-            Text(
-              text = version,
-              style = MaterialTheme.typography.titleMedium,
-              color = MaterialTheme.colorScheme.primary
-            )
-            features.forEach { feature ->
-              Text(
-                text = "・$feature",
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.padding(start = 8.dp)
-              )
-            }
-          }
-        }
-      }
-    },
-    confirmButton = {
-      TextButton(onClick = onDismiss) {
-        Text("閉じる")
-      }
-    }
-  )
-}
-
-@Composable
-fun PermissionRequiredView(
-  hasLocationPermission: Boolean,
-  hasPhoneStatePermission: Boolean,
-  isLocationEnabled: Boolean,
-  onPermissionRequest: () -> Unit,
-  onOpenSettings: () -> Unit,
-  onOpenLocationSettings: () -> Unit,
-  modifier: Modifier = Modifier
-) {
-  val hasPermissions = hasLocationPermission && hasPhoneStatePermission
-  Column(
-    modifier = modifier
-      .fillMaxSize()
-      .padding(24.dp),
-    verticalArrangement = Arrangement.Center,
-    horizontalAlignment = Alignment.CenterHorizontally
-  ) {
-    Icon(
-      imageVector = Icons.Default.LocationOn,
-      contentDescription = null,
-      modifier = Modifier.size(64.dp),
-      tint = MaterialTheme.colorScheme.primary
-    )
-    Spacer(modifier = Modifier.height(16.dp))
-    Text(
-      text = if (!hasPermissions) "必要な権限がありません" else "位置情報をオンにしてください",
-      style = MaterialTheme.typography.headlineSmall,
-      textAlign = TextAlign.Center
-    )
-    Spacer(modifier = Modifier.height(8.dp))
-    val message = when {
-      !hasLocationPermission && !hasPhoneStatePermission -> "セル情報を取得するには、位置情報と電話の権限が必要です。"
-      !hasLocationPermission -> "セル情報を取得するには、位置情報の権限が必要です。"
-      !hasPhoneStatePermission -> "セル情報を取得するには、電話の状態の権限が必要です。"
-      !isLocationEnabled -> "セル情報を取得するには、位置情報サービスを有効にする必要があります。"
-      else -> ""
-    }
-    Text(
-      text = message,
-      style = MaterialTheme.typography.bodyMedium,
-      textAlign = TextAlign.Center,
-      color = MaterialTheme.colorScheme.onSurfaceVariant
-    )
-    Spacer(modifier = Modifier.height(24.dp))
-    if (!hasPermissions) {
-      Button(
-        onClick = onPermissionRequest,
-        modifier = Modifier.fillMaxWidth()
-      ) {
-        Text("権限をリクエスト")
-      }
-      Spacer(modifier = Modifier.height(8.dp))
-      TextButton(
-        onClick = onOpenSettings,
-        modifier = Modifier.fillMaxWidth()
-      ) {
-        Text("設定画面を開く")
-      }
-    } else if (!isLocationEnabled) {
-      Button(
-        onClick = onOpenLocationSettings,
-        modifier = Modifier.fillMaxWidth()
-      ) {
-        Text("位置情報をオンにする")
-      }
-    }
-  }
-}
-
-@Composable
-fun CellularInfoList(
-  displayContext: DisplayContext,
-  modifier: Modifier = Modifier,
-  neighborCellCount: Int,
-  fcnConfig: FCN?
-) {
-  val sdf = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.getDefault())
-  val lastUpdatedStr =
-    if (displayContext.lastUpdated > 0) sdf.format(java.util.Date(displayContext.lastUpdated)) else "Never"
-
-  LazyColumn(modifier = modifier.fillMaxSize().padding(horizontal = 16.dp)) {
-    item {
-      Text(
-        text = "Last updated: $lastUpdatedStr",
-        style = MaterialTheme.typography.labelSmall,
-        color = MaterialTheme.colorScheme.outline,
-        modifier = Modifier.padding(top = 8.dp)
-      )
-    }
-
-    if (displayContext.cellularInfos.isEmpty()) {
-      item {
-        Text(text = "No Cellular Connection", modifier = Modifier.padding(vertical = 16.dp))
-      }
-    } else {
-      item {
-        Text(
-          text = "Connected Cells",
-          style = MaterialTheme.typography.titleMedium,
-          modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
-        )
-      }
-      items(displayContext.cellularInfos) { info ->
-        CellularInfoCard(info, fcnConfig, neighborCellCount)
-      }
-    }
-
-    if (displayContext.carrierBands.isNotEmpty()) {
-      item {
-        Text(
-          text = "Neighbor Cells",
-          style = MaterialTheme.typography.titleMedium,
-          modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
-        )
-      }
-      items(displayContext.carrierBands) { info ->
-        CellularInfoCard(info, fcnConfig)
-      }
-    }
-
-    item {
-      Spacer(modifier = Modifier.height(32.dp))
-    }
-  }
-}
-
-@Composable
-fun InfoRow(label: String, value: String, modifier: Modifier = Modifier) {
-  Row(modifier = modifier.padding(vertical = 2.dp)) {
-    Text(
-      text = label,
-      modifier = Modifier.width(75.dp),
-      style = MaterialTheme.typography.bodyMedium,
-      color = MaterialTheme.colorScheme.secondary
-    )
-    Text(
-      text = ": $value",
-      style = MaterialTheme.typography.bodyMedium,
-      color = MaterialTheme.colorScheme.onSurface
-    )
-  }
-}
-
-@Composable
-fun CellularInfoCard(info: CellularInfo, fcnConfig: FCN?, neighborCellCount: Int = 0) {
-  Card(
-    modifier = Modifier
-      .padding(vertical = 4.dp)
-      .fillMaxWidth()
-  ) {
-    Column(modifier = Modifier.padding(16.dp)) {
-      Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.fillMaxWidth()
-      ) {
-        val bandDisplay = if (info.band.isNullOrEmpty()) {
-          when (info.networkType) {
-            NetworkType.LTE -> CarrierUtils.getEarfcnDetails(fcnConfig, info.earfcn).first ?: ""
-            NetworkType.NR -> CarrierUtils.getNrfcnDetails(fcnConfig, info.nrarfcn).first ?: ""
-            else -> ""
-          }
-        } else {
-          info.band
-        }
-        Text(
-          text = "${info.networkType} $bandDisplay",
-          style = MaterialTheme.typography.headlineSmall
-        )
-        Spacer(modifier = Modifier.weight(1f))
-        if (info.isRegistered) {
-          Badge(containerColor = MaterialTheme.colorScheme.primaryContainer) {
-            Text(
-              text = "Connected",
-              modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
-            )
-          }
-        }
-      }
-
-      val detailInfo = when (info.networkType) {
-        NetworkType.LTE -> CarrierUtils.getEarfcnDetails(fcnConfig, info.earfcn).second
-        NetworkType.NR -> CarrierUtils.getNrfcnDetails(fcnConfig, info.nrarfcn).second
-        else -> null
-      }
-
-      if (info.bandDetails != null || detailInfo != null) {
-        val frequency = when (detailInfo) {
-          is EarfcnChild -> "${detailInfo.frequency} MHz"
-          is NrfcnChild -> "${detailInfo.frequency} MHz"
-          else -> info.bandDetails?.frequency ?: "N/A"
-        }
-        Text(
-          text = "Frequency: $frequency",
-          style = MaterialTheme.typography.bodyLarge,
-          color = MaterialTheme.colorScheme.primary,
-          modifier = Modifier.padding(top = 4.dp)
-        )
-        val note = info.bandDetails?.features ?: detailInfo?.let {
-          when (it) {
-            is EarfcnChild -> it.note ?: ""
-            is NrfcnChild -> it.note ?: ""
-            else -> ""
-          }
-        } ?: ""
-        if (note.isNotEmpty()) {
-          Text(
-            text = note,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.secondary
-          )
-        }
-      }
-
-      HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
-
-      InfoRow(label = "Provider", value = info.providerName ?: "Unknown")
-      if (info.pci != null) {
-        InfoRow(
-          label = "PCI",
-          value = info.pci.toString(),
-          modifier = Modifier.fillMaxWidth(0.5f)
-        )
-      }
-      @OptIn(ExperimentalLayoutApi::class)
-      FlowRow(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween
-      ) {
-        info.rsrp?.let {
-            InfoRow(
-              label = "RSRP",
-              value = "$it dBm",
-              modifier = Modifier.fillMaxWidth(0.5f)
-            )
-          }
-          info.rsrq?.let {
-            InfoRow(
-              label = "RSRQ",
-              value = "$it dB",
-              modifier = Modifier.fillMaxWidth(0.5f)
-            )
-          }
-          info.rssi?.let {
-            InfoRow(
-              label = "RSSI",
-              value = "$it dBm",
-              modifier = Modifier.fillMaxWidth(0.5f)
-            )
-          }
-          info.sinr?.let {
-            InfoRow(
-              label = "SINR",
-              value = "$it dB",
-              modifier = Modifier.fillMaxWidth(0.5f)
-            )
-          }
-
-          if (info.networkType == NetworkType.LTE) {
-            InfoRow(
-              label = "EARFCN",
-              value = info.earfcn.toString(),
-              modifier = Modifier.fillMaxWidth(0.5f)
-            )
-            val bw = CarrierUtils.getBandWidth(fcnConfig, info.earfcn).second
-            bw?.let {
-              InfoRow(
-                label = "Bandwidth",
-                value = "%.1f MHz".format(it),
-                modifier = Modifier.fillMaxWidth(0.5f)
-              )
-            }
-          } else if (info.networkType == NetworkType.NR) {
-            InfoRow(
-              label = "NR-ARFCN",
-              value = info.nrarfcn.toString(),
-              modifier = Modifier.fillMaxWidth(0.5f)
-            )
-            val bw = CarrierUtils.getNrBandWidth(fcnConfig, info.nrarfcn).second
-            bw?.let {
-              InfoRow(
-                label = "Bandwidth",
-                value = "%.1f MHz".format(it),
-                modifier = Modifier.fillMaxWidth(0.5f)
-              )
-            }
-          }
-        }
-
-      if (info.isRegistered && neighborCellCount > 0) {
-        Spacer(modifier = Modifier.height(8.dp))
-        Text(
-          text = "Neighbor Cells: $neighborCellCount",
-          style = MaterialTheme.typography.labelMedium,
-          color = MaterialTheme.colorScheme.outline
-        )
-      }
-    }
   }
 }
