@@ -449,28 +449,40 @@ class MainActivity : ComponentActivity() {
     val now = System.currentTimeMillis()
 
     try {
-      val all = telephonyManager.allCellInfo ?: emptyList<CellInfo>()
-      val infos = all.filter { it.isRegistered }.map { convertToCellularInfo(it, now) }
-
-      val unregistered = all.filter { !it.isRegistered }.map { convertToCellularInfo(it, now) }
-
-      neighborCellCount.intValue = all.size - infos.size
-
-      // 要件に基づくリスト構築: 現在接続中のセルラーデータのみを表示
-      displayState.value = displayState.value.copy(
-        cellularInfos = infos,
-        carrierBands = unregistered,
-        lastUpdated = System.currentTimeMillis()
-      )
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        telephonyManager.requestCellInfoUpdate(mainExecutor, object : TelephonyManager.CellInfoCallback() {
+          override fun onCellInfo(cellInfo: List<CellInfo>) {
+            processCellInfo(cellInfo, System.currentTimeMillis())
+          }
+        })
+      } else {
+        val all = telephonyManager.allCellInfo ?: emptyList<CellInfo>()
+        processCellInfo(all, now)
+      }
     } catch (e: SecurityException) {
       Log.e(TAG, "SecurityException: ${e.message}")
     }
+  }
+
+  private fun processCellInfo(all: List<CellInfo>, now: Long) {
+    val infos = all.filter { it.isRegistered }.map { convertToCellularInfo(it, now) }
+    val unregistered = all.filter { !it.isRegistered }.map { convertToCellularInfo(it, now) }
+
+    neighborCellCount.intValue = all.size - infos.size
+
+    // 要件に基づくリスト構築: 現在接続中のセルラーデータのみを表示
+    displayState.value = displayState.value.copy(
+      cellularInfos = infos,
+      carrierBands = unregistered,
+      lastUpdated = System.currentTimeMillis()
+    )
   }
 }
 
 @Composable
 fun ChangelogDialog(onDismiss: () -> Unit) {
   val changelogs = listOf(
+    "v1.3.4" to listOf("セル情報の更新性を向上", "Neighbor Cellの更新タイミングを改善"),
     "v1.3.3" to listOf("PCIの表示位置を修正"),
     "v1.3.2" to listOf("UIレイアウトを2列表示に変更"),
     "v1.3.1" to listOf("UI上のラベル幅を固定"),
