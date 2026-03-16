@@ -23,17 +23,17 @@ jobs:
 
       # 署名鍵を Base64 から復元
       - name: Decode Keystore
-        run: echo "${{ secrets.RELEASE_STORE_FILE_BASE64 }}" | base64 --decode > app/signing-key.jks
+        run: echo "${{ secrets.RELEASE_KEYSTORE_BASE64 }}" | base64 --decode > app/signing-key.jks
 
 
       # 1. ビルド実行 (署名付き)
       - name: Build with Gradle
         run: ./gradlew assembleRelease
         env:
-          RELEASE_STORE_FILE: app/signing-key.jks # 復元したファイル名を指定
-          RELEASE_STORE_PASSWORD: ${{ secrets.RELEASE_STORE_PASSWORD }}
-          RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
-          RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
+          RELEASE_STORE_FILE: signing-key.jks # 復元したファイル名を指定
+          RELEASE_STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
+          RELEASE_KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          RELEASE_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
       # 2. サーバーへ転送
       - name: Rename and Copy APK
         run: |
