@@ -138,14 +138,16 @@ fun DetailRow(label: String, value: String) {
 
 @Composable
 fun CellularInfoList(
-  displayContext: DisplayContext,
+  cellularInfos: List<CellularInfo>,
+  carrierBands: List<CellularInfo>,
+  lastUpdated: Long,
   modifier: Modifier = Modifier,
   neighborCellCount: Int,
   fcnConfig: FCN?
 ) {
   val sdf = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
   val lastUpdatedStr =
-    if (displayContext.lastUpdated > 0) sdf.format(Date(displayContext.lastUpdated)) else "Never"
+    if (lastUpdated > 0) sdf.format(Date(lastUpdated)) else "Never"
 
   var selectedInfo by remember { mutableStateOf<CellularInfo?>(null) }
 
@@ -159,7 +161,7 @@ fun CellularInfoList(
       )
     }
 
-    if (displayContext.cellularInfos.isEmpty()) {
+    if (cellularInfos.isEmpty()) {
       item {
         Text(text = "No Cellular Connection", modifier = Modifier.padding(vertical = 16.dp))
       }
@@ -171,12 +173,12 @@ fun CellularInfoList(
           modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
         )
       }
-      items(displayContext.cellularInfos) { info ->
+      items(cellularInfos) { info ->
         CellularInfoCard(info, fcnConfig, neighborCellCount, onClick = { selectedInfo = info })
       }
     }
 
-    if (displayContext.carrierBands.isNotEmpty()) {
+    if (carrierBands.isNotEmpty()) {
       item {
         Text(
           text = "Neighbor Cells",
@@ -184,7 +186,7 @@ fun CellularInfoList(
           modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
         )
       }
-      items(displayContext.carrierBands) { info ->
+      items(carrierBands) { info ->
         CellularInfoCard(info, fcnConfig, onClick = { selectedInfo = info })
       }
     }
@@ -193,10 +195,6 @@ fun CellularInfoList(
       Spacer(modifier = Modifier.height(32.dp))
     }
   }
-
-//  selectedInfo?.let { info ->
-//    CellDetailDialog(info = info, fcnConfig = fcnConfig, onDismiss = { selectedInfo = null })
-//  }
 }
 
 @Composable

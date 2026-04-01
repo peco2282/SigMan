@@ -1,6 +1,7 @@
 package com.peco2282.sigman
 
 import android.content.Context
+import android.telephony.SubscriptionInfo
 import android.util.Log
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -93,7 +94,10 @@ data class DisplayContext(
   val lastUpdated: Long = 0L,
   val hasLocationPermission: Boolean = true,
   val hasPhoneStatePermission: Boolean = true,
-  val isLocationEnabled: Boolean = true
+  val isLocationEnabled: Boolean = true,
+  val subInfo: List<SubscriptionInfo> = emptyList(),
+  val perSubCellularInfos: Map<Int, List<CellularInfo>> = emptyMap(),
+  val perSubCarrierBands: Map<Int, List<CellularInfo>> = emptyMap()
 )
 
 @Serializable
