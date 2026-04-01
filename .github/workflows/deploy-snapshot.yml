@@ -44,7 +44,7 @@ jobs:
 
       # 3. サーバー上でファイル名を固定して上書き
       - name: Copy to VPS
-        uses: appleboy/scp-action@v0.1.7
+        uses: appleboy/scp-action@v1.0.0
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
