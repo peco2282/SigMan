@@ -36,24 +36,25 @@ class MainActivity : ComponentActivity() {
   }
 
   private val telephonyManager by lazy { getSystemService(TELEPHONY_SERVICE) as TelephonyManager }
+  private val subscriptionManager by lazy { getSystemService(SubscriptionManager::class.java) }
 
   private val displayState = mutableStateOf(DisplayContext())
-  private val neighborCellCount = mutableIntStateOf(0)
+  private val neighborCellCounts = mutableStateOf<Map<Int, Int>>(emptyMap())
 
   // Update hooks
-  private var telephonyCallback: TelephonyCallback? = null
-  private var phoneStateListener: PhoneStateListener? = null
+  private val telephonyCallbacks = mutableMapOf<Int, TelephonyCallback>()
+  private val phoneStateListeners = mutableMapOf<Int, PhoneStateListener>()
 
   // 最新の情報を保持
-  private var latestServiceState: ServiceState? = null
-  private var latestDisplayInfo: TelephonyDisplayInfo? = null
+  private val latestServiceStates = mutableMapOf<Int, ServiceState>()
+  private val latestDisplayInfos = mutableMapOf<Int, TelephonyDisplayInfo>()
 
   // Fallback polling (for devices that don't push callbacks reliably)
   private val handler by lazy { Handler(Looper.getMainLooper()) }
   private val pollRunnable = object : Runnable {
     override fun run() {
       try {
-        updateCellularInfo()
+        updateCellularInfo(null)
       } finally {
         handler.postDelayed(this, POLL_INTERVAL_MS)
       }
@@ -154,7 +155,7 @@ class MainActivity : ComponentActivity() {
       SigManTheme {
         SigManApp(
           displayState = displayState.value,
-          neighborCellCount = neighborCellCount.intValue,
+          neighborCellCounts = neighborCellCounts.value,
           fcnConfig = fcnConfig,
           onPermissionRequest = { checkPermissionAndRun() },
           onOpenSettings = { openAppSettings() },
@@ -197,9 +198,7 @@ class MainActivity : ComponentActivity() {
   }
 
   private fun startUpdating() {
-    // Ensure initial load
-    updateCellularInfo()
-
+    updatePermissionState()
     // Check permissions before registering callbacks
     val locationGranted = ContextCompat.checkSelfPermission(
       this,
@@ -215,71 +214,94 @@ class MainActivity : ComponentActivity() {
         TAG,
         "Cannot start updating: permissions not granted (Location: $locationGranted, PhoneState: $phoneStateGranted)"
       )
+      updatePermissionState()
       return
     }
 
-    // Register callbacks depending on API level
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-      if (telephonyCallback == null) {
-        val callback = object : TelephonyCallback(),
-          TelephonyCallback.CellInfoListener,
-          TelephonyCallback.SignalStrengthsListener,
-          TelephonyCallback.ServiceStateListener,
-          TelephonyCallback.DisplayInfoListener {
-          override fun onSignalStrengthsChanged(signalStrength: SignalStrength) {
-            updateCellularInfo()
-          }
+    // Ensure initial load
+    updateCellularInfo(null)
 
-          override fun onCellInfoChanged(cellInfo: List<CellInfo>) {
-            updateCellularInfo()
-          }
+    val activeSubscriptions = try {
+      subscriptionManager.activeSubscriptionInfoList ?: emptyList()
+    } catch (e: SecurityException) {
+      emptyList()
+    }
 
-          override fun onServiceStateChanged(serviceState: ServiceState) {
-            latestServiceState = serviceState
-            updateCellularInfo()
-          }
+    activeSubscriptions.forEach { sub ->
+      val subId = sub.subscriptionId
+      val subTelephonyManager = telephonyManager.createForSubscriptionId(subId)
 
-          override fun onDisplayInfoChanged(telephonyDisplayInfo: TelephonyDisplayInfo) {
-            latestDisplayInfo = telephonyDisplayInfo
-            updateCellularInfo()
+      // Register callbacks depending on API level
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        if (!telephonyCallbacks.containsKey(subId)) {
+          val callback = object : TelephonyCallback(),
+            TelephonyCallback.CellInfoListener,
+            TelephonyCallback.SignalStrengthsListener,
+            TelephonyCallback.ServiceStateListener,
+            TelephonyCallback.DisplayInfoListener {
+            override fun onSignalStrengthsChanged(signalStrength: SignalStrength) {
+              updateCellularInfo(subId)
+            }
+
+            override fun onCellInfoChanged(cellInfo: List<CellInfo>) {
+              updateCellularInfo(subId)
+            }
+
+            override fun onServiceStateChanged(serviceState: ServiceState) {
+              latestServiceStates[subId] = serviceState
+              updateCellularInfo(subId)
+            }
+
+            override fun onDisplayInfoChanged(telephonyDisplayInfo: TelephonyDisplayInfo) {
+              latestDisplayInfos[subId] = telephonyDisplayInfo
+              updateCellularInfo(subId)
+            }
+          }
+          telephonyCallbacks[subId] = callback
+          try {
+            subTelephonyManager.registerTelephonyCallback(mainExecutor, callback)
+          } catch (se: SecurityException) {
+            Log.e(TAG, "registerTelephonyCallback SecurityException: ${se.message}")
           }
         }
-        telephonyCallback = callback
-        try {
-          telephonyManager.registerTelephonyCallback(mainExecutor, callback)
-        } catch (se: SecurityException) {
-          Log.e(TAG, "registerTelephonyCallback SecurityException: ${se.message}")
-        }
-      }
-    } else {
-      if (phoneStateListener == null) {
-        val listener = object : PhoneStateListener() {
-          override fun onSignalStrengthsChanged(signalStrength: SignalStrength?) {
-            updateCellularInfo()
-          }
+      } else {
+        if (!phoneStateListeners.containsKey(subId)) {
+          val listener = object : PhoneStateListener() {
+            override fun onSignalStrengthsChanged(signalStrength: SignalStrength?) {
+              updateCellularInfo(subId)
+            }
 
-          override fun onCellInfoChanged(cellInfo: MutableList<CellInfo>?) {
-            updateCellularInfo()
-          }
+            override fun onCellInfoChanged(cellInfo: MutableList<CellInfo>?) {
+              updateCellularInfo(subId)
+            }
 
-          override fun onServiceStateChanged(serviceState: ServiceState?) {
-            latestServiceState = serviceState
-            updateCellularInfo()
+            override fun onServiceStateChanged(serviceState: ServiceState?) {
+              if (serviceState != null) {
+                latestServiceStates[subId] = serviceState
+              }
+              updateCellularInfo(subId)
+            }
+
+            override fun onDisplayInfoChanged(telephonyDisplayInfo: TelephonyDisplayInfo) {
+              latestDisplayInfos[subId] = telephonyDisplayInfo
+              updateCellularInfo(subId)
+            }
           }
-        }
-        phoneStateListener = listener
-        try {
-          @Suppress("DEPRECATION")
-          telephonyManager.listen(
-            listener,
-            @Suppress("DEPRECATION") (
-                PhoneStateListener.LISTEN_SIGNAL_STRENGTHS or
-                    PhoneStateListener.LISTEN_CELL_INFO or
-                    PhoneStateListener.LISTEN_SERVICE_STATE
-                )
-          )
-        } catch (se: SecurityException) {
-          Log.e(TAG, "listen SecurityException: ${se.message}")
+          phoneStateListeners[subId] = listener
+          try {
+            @Suppress("DEPRECATION")
+            subTelephonyManager.listen(
+              listener,
+              @Suppress("DEPRECATION") (
+                  PhoneStateListener.LISTEN_SIGNAL_STRENGTHS or
+                      PhoneStateListener.LISTEN_CELL_INFO or
+                      PhoneStateListener.LISTEN_SERVICE_STATE or
+                      PhoneStateListener.LISTEN_DISPLAY_INFO_CHANGED
+                  )
+            )
+          } catch (se: SecurityException) {
+            Log.e(TAG, "listen SecurityException: ${se.message}")
+          }
         }
       }
     }
@@ -292,30 +314,34 @@ class MainActivity : ComponentActivity() {
   private fun stopUpdating() {
     // Stop callbacks
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-      telephonyCallback?.let {
+      telephonyCallbacks.forEach { (subId, callback) ->
         try {
-          telephonyManager.unregisterTelephonyCallback(it)
+          telephonyManager.createForSubscriptionId(subId).unregisterTelephonyCallback(callback)
         } catch (t: Throwable) {
           // ignore
         }
       }
-      telephonyCallback = null
+      telephonyCallbacks.clear()
     } else {
-      phoneStateListener?.let {
+      phoneStateListeners.forEach { (subId, listener) ->
         try {
           @Suppress("DEPRECATION")
-          telephonyManager.listen(it, PhoneStateListener.LISTEN_NONE)
+          telephonyManager.createForSubscriptionId(subId).listen(listener, PhoneStateListener.LISTEN_NONE)
         } catch (t: Throwable) {
           // ignore
         }
       }
-      phoneStateListener = null
+      phoneStateListeners.clear()
     }
     // Stop polling
     handler.removeCallbacks(pollRunnable)
   }
 
-  private fun convertToCellularInfo(info: CellInfo, now: Long): CellularInfo {
+  private fun convertToCellularInfo(info: CellInfo, now: Long, subId: Int): CellularInfo {
+    val subTelephonyManager = telephonyManager.createForSubscriptionId(subId)
+    val latestServiceState = latestServiceStates[subId]
+    val latestDisplayInfo = latestDisplayInfos[subId]
+
     val serviceStateStr = when (latestServiceState?.state) {
       ServiceState.STATE_IN_SERVICE -> "IN_SERVICE"
       ServiceState.STATE_OUT_OF_SERVICE -> "OUT_OF_SERVICE"
@@ -330,7 +356,7 @@ class MainActivity : ComponentActivity() {
     } else null
 
     val dataNetworkType = try {
-      when (telephonyManager.dataNetworkType) {
+      when (subTelephonyManager.dataNetworkType) {
         TelephonyManager.NETWORK_TYPE_LTE -> "LTE"
         TelephonyManager.NETWORK_TYPE_NR -> "NR"
         TelephonyManager.NETWORK_TYPE_HSPA, TelephonyManager.NETWORK_TYPE_HSPAP -> "HSPA"
@@ -365,7 +391,7 @@ class MainActivity : ComponentActivity() {
 
         CellularInfo(
           networkType = NetworkType.LTE,
-          providerName = telephonyManager.networkOperatorName,
+          providerName = subTelephonyManager.networkOperatorName,
           mcc = identity.mccString,
           mnc = identity.mncString,
           rsrp = signalStrength.rsrp.takeIf { it != CellInfo.UNAVAILABLE },
@@ -418,7 +444,7 @@ class MainActivity : ComponentActivity() {
 
         CellularInfo(
           networkType = NetworkType.NR,
-          providerName = telephonyManager.networkOperatorName,
+          providerName = subTelephonyManager.networkOperatorName,
           mcc = identity.mccString,
           mnc = identity.mncString,
           rsrp = rsrp,
@@ -442,7 +468,7 @@ class MainActivity : ComponentActivity() {
         val signalStrength = info.cellSignalStrength
         CellularInfo(
           networkType = NetworkType.WCDMA,
-          providerName = telephonyManager.networkOperatorName,
+          providerName = subTelephonyManager.networkOperatorName,
           mcc = identity.mccString,
           mnc = identity.mncString,
           rsrp = signalStrength.dbm.takeIf { it != CellInfo.UNAVAILABLE },
@@ -462,7 +488,7 @@ class MainActivity : ComponentActivity() {
         val signalStrength = info.cellSignalStrength
         CellularInfo(
           networkType = NetworkType.GSM,
-          providerName = telephonyManager.networkOperatorName,
+          providerName = subTelephonyManager.networkOperatorName,
           mcc = identity.mccString,
           mnc = identity.mncString,
           rssi = signalStrength.dbm.takeIf { it != CellInfo.UNAVAILABLE },
@@ -502,7 +528,7 @@ class MainActivity : ComponentActivity() {
     }
   }
 
-  private fun updateCellularInfo() {
+  private fun updateCellularInfo(targetSubId: Int? = null) {
     updatePermissionState()
     if (ContextCompat.checkSelfPermission(
         this,
@@ -512,34 +538,63 @@ class MainActivity : ComponentActivity() {
       return
     }
 
-    val now = System.currentTimeMillis()
-
-    try {
-      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-        telephonyManager.requestCellInfoUpdate(mainExecutor, object : TelephonyManager.CellInfoCallback() {
-          override fun onCellInfo(cellInfo: List<CellInfo>) {
-            processCellInfo(cellInfo, System.currentTimeMillis())
-          }
-        })
-      } else {
-        val all = telephonyManager.allCellInfo ?: emptyList<CellInfo>()
-        processCellInfo(all, now)
-      }
+    val activeSubscriptions = try {
+      subscriptionManager.activeSubscriptionInfoList ?: emptyList()
     } catch (e: SecurityException) {
-      Log.e(TAG, "SecurityException: ${e.message}")
+      emptyList()
+    }
+
+    displayState.value = displayState.value.copy(
+      subInfo = activeSubscriptions
+    )
+
+    activeSubscriptions.forEach { sub ->
+      val subId = sub.subscriptionId
+      if (targetSubId != null && targetSubId != subId) return@forEach
+
+      val subTelephonyManager = telephonyManager.createForSubscriptionId(subId)
+      val now = System.currentTimeMillis()
+
+      try {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+          subTelephonyManager.requestCellInfoUpdate(mainExecutor, object : TelephonyManager.CellInfoCallback() {
+            override fun onCellInfo(cellInfo: List<CellInfo>) {
+              processCellInfo(cellInfo, System.currentTimeMillis(), subId)
+            }
+          })
+        } else {
+          val all = subTelephonyManager.allCellInfo ?: emptyList<CellInfo>()
+          processCellInfo(all, now, subId)
+        }
+      } catch (e: SecurityException) {
+        Log.e(TAG, "SecurityException for subId $subId: ${e.message}")
+      }
     }
   }
 
-  private fun processCellInfo(all: List<CellInfo>, now: Long) {
-    val infos = all.filter { it.isRegistered }.map { convertToCellularInfo(it, now) }
-    val unregistered = all.filter { !it.isRegistered }.map { convertToCellularInfo(it, now) }
+  private fun processCellInfo(all: List<CellInfo>, now: Long, subId: Int) {
+    val infos = all.filter { it.isRegistered }.map { convertToCellularInfo(it, now, subId) }
+    val unregistered = all.filter { !it.isRegistered }.map { convertToCellularInfo(it, now, subId) }
 
-    neighborCellCount.intValue = all.size - infos.size
+    val currentNeighbors = neighborCellCounts.value.toMutableMap()
+    currentNeighbors[subId] = all.size - infos.size
+    neighborCellCounts.value = currentNeighbors
 
-    // 要件に基づくリスト構築: 現在接続中のセルラーデータのみを表示
+    val currentPerSubInfos = displayState.value.perSubCellularInfos.toMutableMap()
+    currentPerSubInfos[subId] = infos
+    val currentPerSubBands = displayState.value.perSubCarrierBands.toMutableMap()
+    currentPerSubBands[subId] = unregistered
+
+    // デフォルト表示（最初のSIM）も念のため更新
+    val firstSubId = displayState.value.subInfo.firstOrNull()?.subscriptionId
+    val defaultInfos = if (subId == firstSubId || firstSubId == null) infos else displayState.value.cellularInfos
+    val defaultBands = if (subId == firstSubId || firstSubId == null) unregistered else displayState.value.carrierBands
+
     displayState.value = displayState.value.copy(
-      cellularInfos = infos,
-      carrierBands = unregistered,
+      cellularInfos = defaultInfos,
+      carrierBands = defaultBands,
+      perSubCellularInfos = currentPerSubInfos,
+      perSubCarrierBands = currentPerSubBands,
       lastUpdated = System.currentTimeMillis()
     )
   }
