@@ -13,6 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
 private val CHANGELOGS = listOf(
+  "v1.4" to listOf("デュアルSIMを使用している場合、すべてのSIM情報を見れるよう修正"),
   "v1.3.4" to listOf("セル情報の更新性を向上", "Neighbor Cellの更新タイミングを改善"),
   "v1.3.3" to listOf("PCI de 表示位置を修正"),
   "v1.3.2" to listOf("UIレイアウトを2列表示に変更"),
