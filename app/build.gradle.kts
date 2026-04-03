@@ -22,7 +22,7 @@ android {
     minSdk = 29
     targetSdk = 36
     versionCode = 1
-    versionName = System.getenv("GITHUB_REF_NAME") ?: "v1.4"
+    versionName = System.getenv("GITHUB_REF_NAME") ?: "v1.4.1"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }
