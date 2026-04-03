@@ -80,33 +80,36 @@ fun SigManApp(
         val pagerState = rememberPagerState(pageCount = { subs.size })
         val scope = rememberCoroutineScope()
         Column(modifier = Modifier.padding(innerPadding)) {
-          ScrollableTabRow(
-            selectedTabIndex = pagerState.currentPage,
-            edgePadding = 16.dp,
-            containerColor = MaterialTheme.colorScheme.surface,
-            contentColor = MaterialTheme.colorScheme.primary,
-            divider = {}
-          ) {
-            subs.forEachIndexed { index, sub ->
-              Tab(
-                selected = pagerState.currentPage == index,
-                onClick = {
-                  scope.launch {
-                    pagerState.animateScrollToPage(index)
+          if (subs.size > 1) {
+            ScrollableTabRow(
+              selectedTabIndex = pagerState.currentPage,
+              edgePadding = 16.dp,
+              containerColor = MaterialTheme.colorScheme.surface,
+              contentColor = MaterialTheme.colorScheme.primary,
+              divider = {}
+            ) {
+              subs.forEachIndexed { index, sub ->
+                Tab(
+                  selected = pagerState.currentPage == index,
+                  onClick = {
+                    scope.launch {
+                      pagerState.animateScrollToPage(index)
+                    }
+                  },
+                  text = {
+                    Text(
+                      text = sub.displayName.toString(),
+                      style = MaterialTheme.typography.titleSmall
+                    )
                   }
-                },
-                text = {
-                  Text(
-                    text = sub.displayName.toString(),
-                    style = MaterialTheme.typography.titleSmall
-                  )
-                }
-              )
+                )
+              }
             }
           }
           HorizontalPager(
             state = pagerState,
-            modifier = Modifier.weight(1f)
+            modifier = Modifier.weight(1f),
+            userScrollEnabled = subs.size > 1
           ) { page ->
             val sub = subs[page]
             val subId = sub.subscriptionId
