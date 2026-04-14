@@ -43,6 +43,14 @@ android {
       proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
     }
   }
+
+  packaging {
+    resources {
+      pickFirsts.add("org/bouncycastle/x509/CertPathReviewerMessages_de.properties")
+      pickFirsts.add("org/bouncycastle/x509/CertPathReviewerMessages.properties")
+    }
+  }
+
   compileOptions {
     sourceCompatibility = JavaVersion.VERSION_17
     targetCompatibility = JavaVersion.VERSION_17
@@ -91,4 +99,12 @@ dependencies {
   implementation("androidx.compose.material:material-icons-extended")
   implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.10.0")
   implementation("com.google.android.gms:play-services-location:21.3.0")
+
+  // ADB Library
+  implementation("com.github.MuntashirAkon:libadb-android:3.1.1")
+//  implementation("org.bouncycastle:bcprov-jdk15on:1.70")
+  implementation("org.bouncycastle:bcpkix-jdk15to18:1.81")
+  
+  // Charts
+  implementation("com.github.PhilJay:MPAndroidChart:v3.1.0")
 }
