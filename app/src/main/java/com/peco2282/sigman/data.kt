@@ -97,7 +97,9 @@ data class DisplayContext(
   val isLocationEnabled: Boolean = true,
   val subInfo: List<SubscriptionInfo> = emptyList(),
   val perSubCellularInfos: Map<Int, List<CellularInfo>> = emptyMap(),
-  val perSubCarrierBands: Map<Int, List<CellularInfo>> = emptyMap()
+  val perSubCarrierBands: Map<Int, List<CellularInfo>> = emptyMap(),
+  val isAdbEnabled: Boolean = false,
+  val adbSignalData: com.peco2282.sigman.adb.AdbSignalData? = null
 )
 
 @Serializable

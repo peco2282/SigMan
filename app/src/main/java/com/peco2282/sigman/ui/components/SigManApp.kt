@@ -22,7 +22,10 @@ fun SigManApp(
   fcnConfig: FCN?,
   onPermissionRequest: () -> Unit,
   onOpenSettings: () -> Unit,
-  onOpenLocationSettings: () -> Unit
+  onOpenLocationSettings: () -> Unit,
+  onAdbToggle: (Boolean) -> Unit,
+  onAdbPair: (String) -> Unit,
+  adbIsConnected: Boolean
 ) {
   var showMenu by remember { mutableStateOf(false) }
   var showChangelog by remember { mutableStateOf(false) }
@@ -66,60 +69,85 @@ fun SigManApp(
         modifier = Modifier.padding(innerPadding)
       )
     } else {
-      val subs = displayState.subInfo
-      if (subs.isEmpty()) {
-        CellularInfoList(
-          cellularInfos = displayState.cellularInfos,
-          carrierBands = displayState.carrierBands,
-          lastUpdated = displayState.lastUpdated,
-          modifier = Modifier.padding(innerPadding),
-          neighborCellCount = neighborCellCounts.values.firstOrNull() ?: 0,
-          fcnConfig = fcnConfig
-        )
-      } else {
-        val pagerState = rememberPagerState(pageCount = { subs.size })
-        val scope = rememberCoroutineScope()
-        Column(modifier = Modifier.padding(innerPadding)) {
-          if (subs.size > 1) {
-            ScrollableTabRow(
-              selectedTabIndex = pagerState.currentPage,
-              edgePadding = 16.dp,
-              containerColor = MaterialTheme.colorScheme.surface,
-              contentColor = MaterialTheme.colorScheme.primary,
-              divider = {}
-            ) {
-              subs.forEachIndexed { index, sub ->
-                Tab(
-                  selected = pagerState.currentPage == index,
-                  onClick = {
-                    scope.launch {
-                      pagerState.animateScrollToPage(index)
-                    }
-                  },
-                  text = {
-                    Text(
-                      text = sub.displayName.toString(),
-                      style = MaterialTheme.typography.titleSmall
+      Column {
+        TabRow(selectedTabIndex = if (displayState.isAdbEnabled) 1 else 0) {
+          Tab(
+            selected = !displayState.isAdbEnabled,
+            onClick = { onAdbToggle(false) },
+            text = { Text("Standard") }
+          )
+          Tab(
+            selected = displayState.isAdbEnabled,
+            onClick = { onAdbToggle(true) },
+            text = { Text("ADB (Raw)") }
+          )
+        }
+
+        if (displayState.isAdbEnabled) {
+          AdbSignalView(
+            adbEnabled = true,
+            onAdbToggle = onAdbToggle,
+            signalData = displayState.adbSignalData,
+            onPair = onAdbPair,
+            isConnected = adbIsConnected
+          )
+        } else {
+          val subs = displayState.subInfo
+          if (subs.isEmpty()) {
+            CellularInfoList(
+              cellularInfos = displayState.cellularInfos,
+              carrierBands = displayState.carrierBands,
+              lastUpdated = displayState.lastUpdated,
+              modifier = Modifier.padding(innerPadding),
+              neighborCellCount = neighborCellCounts.values.firstOrNull() ?: 0,
+              fcnConfig = fcnConfig
+            )
+          } else {
+            val pagerState = rememberPagerState(pageCount = { subs.size })
+            val scope = rememberCoroutineScope()
+            Column {
+              if (subs.size > 1) {
+                ScrollableTabRow(
+                  selectedTabIndex = pagerState.currentPage,
+                  edgePadding = 16.dp,
+                  containerColor = MaterialTheme.colorScheme.surface,
+                  contentColor = MaterialTheme.colorScheme.primary,
+                  divider = {}
+                ) {
+                  subs.forEachIndexed { index, sub ->
+                    Tab(
+                      selected = pagerState.currentPage == index,
+                      onClick = {
+                        scope.launch {
+                          pagerState.animateScrollToPage(index)
+                        }
+                      },
+                      text = {
+                        Text(
+                          text = sub.displayName.toString(),
+                          style = MaterialTheme.typography.titleSmall
+                        )
+                      }
                     )
                   }
+                }
+              }
+              HorizontalPager(
+                state = pagerState,
+                modifier = Modifier.weight(1f),
+                userScrollEnabled = subs.size > 1
+              ) { page ->
+                val sub = subs[page]
+                val subId = sub.subscriptionId
+                CellularInfoList(
+                  cellularInfos = displayState.perSubCellularInfos[subId] ?: emptyList(),
+                  carrierBands = displayState.perSubCarrierBands[subId] ?: emptyList(),
+                  lastUpdated = displayState.lastUpdated,
+                  neighborCellCount = neighborCellCounts[subId] ?: 0,
+                  fcnConfig = fcnConfig
                 )
               }
             }
-          }
-          HorizontalPager(
-            state = pagerState,
-            modifier = Modifier.weight(1f),
-            userScrollEnabled = subs.size > 1
-          ) { page ->
-            val sub = subs[page]
-            val subId = sub.subscriptionId
-            CellularInfoList(
-              cellularInfos = displayState.perSubCellularInfos[subId] ?: emptyList(),
-              carrierBands = displayState.perSubCarrierBands[subId] ?: emptyList(),
-              lastUpdated = displayState.lastUpdated,
-              neighborCellCount = neighborCellCounts[subId] ?: 0,
-              fcnConfig = fcnConfig
-            )
           }
         }
       }

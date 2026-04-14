@@ -25,8 +25,16 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.core.content.ContextCompat
 import com.google.android.gms.common.api.ResolvableApiException
 import com.google.android.gms.location.*
+import com.peco2282.sigman.adb.AdbMeasurementService
+import com.peco2282.sigman.adb.AdbServiceDiscovery
+import com.peco2282.sigman.adb.AdbShellExecutor
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
 import com.peco2282.sigman.ui.components.SigManApp
 import com.peco2282.sigman.ui.theme.SigManTheme
+import androidx.lifecycle.repeatOnLifecycle
+import androidx.lifecycle.Lifecycle
+import kotlinx.coroutines.flow.collectLatest
 
 
 class MainActivity : ComponentActivity() {
@@ -48,6 +56,11 @@ class MainActivity : ComponentActivity() {
   // 最新の情報を保持
   private val latestServiceStates = mutableMapOf<Int, ServiceState>()
   private val latestDisplayInfos = mutableMapOf<Int, TelephonyDisplayInfo>()
+
+  private val adbDiscovery by lazy { AdbServiceDiscovery(this) }
+  private val adbShell by lazy { AdbShellExecutor(this) }
+  private var adbPort: Int? = null
+  private val adbIsConnected = mutableStateOf(false)
 
   // Fallback polling (for devices that don't push callbacks reliably)
   private val handler by lazy { Handler(Looper.getMainLooper()) }
@@ -159,8 +172,36 @@ class MainActivity : ComponentActivity() {
           fcnConfig = fcnConfig,
           onPermissionRequest = { checkPermissionAndRun() },
           onOpenSettings = { openAppSettings() },
-          onOpenLocationSettings = { openLocationSettings() }
+          onOpenLocationSettings = { openLocationSettings() },
+          onAdbToggle = { enabled ->
+            displayState.value = displayState.value.copy(isAdbEnabled = enabled)
+            if (enabled) {
+              startAdbDiscovery()
+            } else {
+              stopAdbService()
+            }
+          },
+          onAdbPair = { code ->
+            pairAdb(code)
+          },
+          adbIsConnected = adbIsConnected.value
         )
+      }
+    }
+
+    // ADB ServiceからのFlowを購読
+    lifecycleScope.launch {
+      repeatOnLifecycle(Lifecycle.State.STARTED) {
+        launch {
+          AdbMeasurementService.signalFlow.collectLatest { data ->
+            displayState.value = displayState.value.copy(adbSignalData = data)
+          }
+        }
+        launch {
+          AdbMeasurementService.connectionStatus.collectLatest { connected ->
+            adbIsConnected.value = connected
+          }
+        }
       }
     }
 
@@ -597,5 +638,53 @@ class MainActivity : ComponentActivity() {
       perSubCarrierBands = currentPerSubBands,
       lastUpdated = System.currentTimeMillis()
     )
+  }
+
+  private fun startAdbDiscovery() {
+    adbDiscovery.startDiscovery { serviceInfo ->
+      adbPort = serviceInfo.port
+      // ポートが見つかったら自動接続を試みる（ペアリング済みの場合）
+      lifecycleScope.launch {
+        val success = adbShell.connect("127.0.0.1", serviceInfo.port)
+        if (success) {
+          adbIsConnected.value = true
+          startAdbService()
+        }
+      }
+    }
+  }
+
+  private fun pairAdb(pairingCode: String) {
+    val port = adbPort ?: return
+    lifecycleScope.launch {
+      val success = adbShell.pair("127.0.0.1", port, pairingCode)
+      if (success) {
+        val connectSuccess = adbShell.connect("127.0.0.1", port)
+        if (connectSuccess) {
+          adbIsConnected.value = true
+          startAdbService()
+        }
+      }
+    }
+  }
+
+  private fun startAdbService() {
+    val intent = Intent(this, AdbMeasurementService::class.java).apply {
+      action = AdbMeasurementService.ACTION_START
+    }
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+      startForegroundService(intent)
+    } else {
+      startService(intent)
+    }
+  }
+
+  private fun stopAdbService() {
+    val intent = Intent(this, AdbMeasurementService::class.java).apply {
+      action = AdbMeasurementService.ACTION_STOP
+    }
+    startService(intent)
+    adbIsConnected.value = false
+    adbDiscovery.stopDiscovery()
   }
 }
