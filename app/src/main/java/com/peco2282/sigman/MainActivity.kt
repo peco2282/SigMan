@@ -643,7 +643,9 @@ class MainActivity : ComponentActivity() {
   }
 
   private fun startAdbDiscovery() {
-    adbDiscovery.startDiscovery { serviceInfo ->
+    // 接続用サービスとペアリング用サービスの両方を順次探す
+    // まずは接続用
+    adbDiscovery.startDiscovery(AdbServiceDiscovery.SERVICE_TYPE_CONNECT) { serviceInfo ->
       adbPort = serviceInfo.port
       // ポートが見つかったら自動接続を試みる（ペアリング済みの場合）
       lifecycleScope.launch {
@@ -651,8 +653,18 @@ class MainActivity : ComponentActivity() {
         if (success) {
           adbIsConnected.value = true
           startAdbService()
+        } else {
+          // 接続に失敗した場合は、ペアリング用サービスも探してみる
+          startAdbPairingDiscovery()
         }
       }
+    }
+  }
+
+  private fun startAdbPairingDiscovery() {
+    adbDiscovery.startDiscovery(AdbServiceDiscovery.SERVICE_TYPE_PAIRING) { serviceInfo ->
+      adbPort = serviceInfo.port
+      Log.d(TAG, "Pairing service found on port: ${serviceInfo.port}")
     }
   }
 

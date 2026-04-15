@@ -7,10 +7,15 @@ import android.util.Log
 
 class AdbServiceDiscovery(private val context: Context) {
   private val nsdManager = context.getSystemService(Context.NSD_SERVICE) as NsdManager
-  private val serviceType = "_adbsecure_connect._tcp."
+  
+  companion object {
+    const val SERVICE_TYPE_CONNECT = "_adbsecure_connect._tcp."
+    const val SERVICE_TYPE_PAIRING = "_adbsecure_pairing._tcp."
+  }
+  
   private var discoveryListener: NsdManager.DiscoveryListener? = null
 
-  fun startDiscovery(onServiceFound: (NsdServiceInfo) -> Unit) {
+  fun startDiscovery(serviceType: String = SERVICE_TYPE_CONNECT, onServiceFound: (NsdServiceInfo) -> Unit) {
     stopDiscovery()
     discoveryListener = object : NsdManager.DiscoveryListener {
       override fun onDiscoveryStarted(regType: String) {
@@ -19,16 +24,21 @@ class AdbServiceDiscovery(private val context: Context) {
 
       override fun onServiceFound(service: NsdServiceInfo) {
         Log.d("AdbDiscovery", "Service found: ${service.serviceName}")
-        nsdManager.resolveService(service, object : NsdManager.ResolveListener {
-          override fun onResolveFailed(serviceInfo: NsdServiceInfo, errorCode: Int) {
-            Log.e("AdbDiscovery", "Resolve failed: $errorCode")
-          }
+        // 既に解決中のリスナーがいる可能性を考慮して新しいリスナーを渡す
+        try {
+            nsdManager.resolveService(service, object : NsdManager.ResolveListener {
+              override fun onResolveFailed(serviceInfo: NsdServiceInfo, errorCode: Int) {
+                Log.e("AdbDiscovery", "Resolve failed: $errorCode")
+              }
 
-          override fun onServiceResolved(serviceInfo: NsdServiceInfo) {
-            Log.d("AdbDiscovery", "Service resolved: ${serviceInfo.host}:${serviceInfo.port}")
-            onServiceFound(serviceInfo)
-          }
-        })
+              override fun onServiceResolved(serviceInfo: NsdServiceInfo) {
+                Log.d("AdbDiscovery", "Service resolved: ${serviceInfo.host}:${serviceInfo.port}")
+                onServiceFound(serviceInfo)
+              }
+            })
+        } catch (e: Exception) {
+            Log.e("AdbDiscovery", "Error resolving service", e)
+        }
       }
 
       override fun onServiceLost(service: NsdServiceInfo) {
@@ -46,15 +56,27 @@ class AdbServiceDiscovery(private val context: Context) {
 
       override fun onStopDiscoveryFailed(serviceType: String, errorCode: Int) {
         Log.e("AdbDiscovery", "Stop discovery failed: $errorCode")
-        nsdManager.stopServiceDiscovery(this)
+        try {
+            nsdManager.stopServiceDiscovery(this)
+        } catch (e: Exception) {
+            Log.e("AdbDiscovery", "Error in onStopDiscoveryFailed", e)
+        }
       }
     }
-    nsdManager.discoverServices(serviceType, NsdManager.PROTOCOL_DNS_SD, discoveryListener)
+    try {
+        nsdManager.discoverServices(serviceType, NsdManager.PROTOCOL_DNS_SD, discoveryListener)
+    } catch (e: Exception) {
+        Log.e("AdbDiscovery", "Error starting discovery", e)
+    }
   }
 
   fun stopDiscovery() {
     discoveryListener?.let {
-      nsdManager.stopServiceDiscovery(it)
+      try {
+          nsdManager.stopServiceDiscovery(it)
+      } catch (e: Exception) {
+          Log.e("AdbDiscovery", "Error stopping discovery", e)
+      }
       discoveryListener = null
     }
   }
