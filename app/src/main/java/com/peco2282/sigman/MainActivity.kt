@@ -61,6 +61,7 @@ class MainActivity : ComponentActivity() {
   private val adbShell by lazy { AdbShellExecutor(this) }
   private var adbPort: Int? = null
   private val adbIsConnected = mutableStateOf(false)
+  private var adbPollingInterval = 1000L
 
   // Fallback polling (for devices that don't push callbacks reliably)
   private val handler by lazy { Handler(Looper.getMainLooper()) }
@@ -173,9 +174,10 @@ class MainActivity : ComponentActivity() {
           onPermissionRequest = { checkPermissionAndRun() },
           onOpenSettings = { openAppSettings() },
           onOpenLocationSettings = { openLocationSettings() },
-          onAdbToggle = { enabled ->
+          onAdbToggle = { enabled, interval ->
             displayState.value = displayState.value.copy(isAdbEnabled = enabled)
             if (enabled) {
+              adbPollingInterval = interval
               startAdbDiscovery()
             } else {
               stopAdbService()
@@ -655,15 +657,23 @@ class MainActivity : ComponentActivity() {
   }
 
   private fun pairAdb(pairingCode: String) {
-    val port = adbPort ?: return
+    val port = adbPort ?: run {
+      android.widget.Toast.makeText(this, "ADBポートが見つかりません。ワイヤレスデバッグを一度オフにして再度オンにしてください。", android.widget.Toast.LENGTH_SHORT).show()
+      return
+    }
     lifecycleScope.launch {
       val success = adbShell.pair("127.0.0.1", port, pairingCode)
       if (success) {
+        android.widget.Toast.makeText(this@MainActivity, "ペアリング成功！接続を開始します...", android.widget.Toast.LENGTH_SHORT).show()
         val connectSuccess = adbShell.connect("127.0.0.1", port)
         if (connectSuccess) {
           adbIsConnected.value = true
           startAdbService()
+        } else {
+          android.widget.Toast.makeText(this@MainActivity, "ペアリング後の接続に失敗しました。", android.widget.Toast.LENGTH_SHORT).show()
         }
+      } else {
+        android.widget.Toast.makeText(this@MainActivity, "ペアリングに失敗しました。コードが正しいか確認してください。", android.widget.Toast.LENGTH_SHORT).show()
       }
     }
   }
@@ -671,6 +681,7 @@ class MainActivity : ComponentActivity() {
   private fun startAdbService() {
     val intent = Intent(this, AdbMeasurementService::class.java).apply {
       action = AdbMeasurementService.ACTION_START
+      putExtra(AdbMeasurementService.EXTRA_POLLING_INTERVAL, adbPollingInterval)
     }
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
       startForegroundService(intent)

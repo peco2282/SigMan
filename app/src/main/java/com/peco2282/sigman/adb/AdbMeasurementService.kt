@@ -13,6 +13,10 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import java.io.File
+import java.io.FileWriter
+import java.text.SimpleDateFormat
+import java.util.*
 
 class AdbMeasurementService : Service() {
   private val serviceJob = Job()
@@ -22,13 +26,15 @@ class AdbMeasurementService : Service() {
   private val parser = AdbSignalParser()
 
   private var isRunning = false
-  private var pollingInterval = 1000L // 1 second as per requirement
+  private var pollingInterval = 1000L
+  private var csvWriter: FileWriter? = null
 
   companion object {
     const val NOTIFICATION_ID = 1001
     const val CHANNEL_ID = "adb_measurement_channel"
     const val ACTION_START = "ACTION_START"
     const val ACTION_STOP = "ACTION_STOP"
+    const val EXTRA_POLLING_INTERVAL = "EXTRA_POLLING_INTERVAL"
 
     private val _signalFlow = MutableStateFlow<AdbSignalData?>(null)
     val signalFlow: StateFlow<AdbSignalData?> = _signalFlow.asStateFlow()
@@ -44,6 +50,7 @@ class AdbMeasurementService : Service() {
   }
 
   override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+    pollingInterval = intent?.getLongExtra(EXTRA_POLLING_INTERVAL, 1000L) ?: 1000L
     when (intent?.action) {
       ACTION_START -> startMeasurement()
       ACTION_STOP -> stopMeasurement()
@@ -55,6 +62,8 @@ class AdbMeasurementService : Service() {
     if (isRunning) return
     isRunning = true
 
+    initCsvWriter()
+
     val notification = createNotification("ADB計測中...")
     startForeground(NOTIFICATION_ID, notification)
 
@@ -65,12 +74,17 @@ class AdbMeasurementService : Service() {
 
         if (connected) {
           val output = adbShell.executeCommand("dumpsys telephony.registry")
-          val signalData = parser.parseTelephonyRegistry(output)
+          val connectivityOutput = adbShell.executeCommand("dumpsys connectivity")
+          
+          val signalData = parser.parseTelephonyRegistry(output).copy(
+            networkType = parser.parseConnectivity(connectivityOutput)
+          )
 
           _signalFlow.value = signalData
-          Log.d("AdbService", "Signal: RSRP=${signalData.rsrp}, NR=${signalData.nrState}")
+          writeToCsv(signalData)
+          Log.d("AdbService", "Signal: RSRP=${signalData.rsrp}, NR=${signalData.nrState}, Net=${signalData.networkType}")
 
-          updateNotification("ADB計測中: RSRP=${signalData.rsrp ?: "N/A"} dBm")
+          updateNotification("ADB計測中: RSRP=${signalData.rsrp ?: "N/A"} dBm, ${signalData.networkType ?: ""}")
         } else {
           Log.w("AdbService", "ADB not connected")
           updateNotification("ADB未接続")
@@ -80,8 +94,39 @@ class AdbMeasurementService : Service() {
     }
   }
 
+  private fun initCsvWriter() {
+    try {
+      val sdf = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault())
+      val fileName = "adb_signal_${sdf.format(Date())}.csv"
+      val file = File(getExternalFilesDir(null), fileName)
+      csvWriter = FileWriter(file, true)
+      csvWriter?.append("Timestamp,RSRP,RSRQ,RSSNR,PCI,NR_State,NetworkType\n")
+      csvWriter?.flush()
+      Log.d("AdbService", "CSV initialized: ${file.absolutePath}")
+    } catch (e: Exception) {
+      Log.e("AdbService", "Failed to init CSV writer", e)
+    }
+  }
+
+  private fun writeToCsv(data: AdbSignalData) {
+    try {
+      val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
+      val timestamp = sdf.format(Date(data.timestamp))
+      csvWriter?.append("$timestamp,${data.rsrp},${data.rsrq},${data.rssnr},${data.pci},${data.nrState},${data.networkType}\n")
+      csvWriter?.flush()
+    } catch (e: Exception) {
+      Log.e("AdbService", "Failed to write CSV", e)
+    }
+  }
+
   private fun stopMeasurement() {
     isRunning = false
+    try {
+      csvWriter?.close()
+      csvWriter = null
+    } catch (e: Exception) {
+      Log.e("AdbService", "Failed to close CSV writer", e)
+    }
     stopForeground(STOP_FOREGROUND_REMOVE)
     stopSelf()
   }

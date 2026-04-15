@@ -23,7 +23,7 @@ fun SigManApp(
   onPermissionRequest: () -> Unit,
   onOpenSettings: () -> Unit,
   onOpenLocationSettings: () -> Unit,
-  onAdbToggle: (Boolean) -> Unit,
+  onAdbToggle: (Boolean, Long) -> Unit,
   onAdbPair: (String) -> Unit,
   adbIsConnected: Boolean
 ) {
@@ -69,16 +69,16 @@ fun SigManApp(
         modifier = Modifier.padding(innerPadding)
       )
     } else {
-      Column {
+      Column(modifier = Modifier.padding(innerPadding)) {
         TabRow(selectedTabIndex = if (displayState.isAdbEnabled) 1 else 0) {
           Tab(
             selected = !displayState.isAdbEnabled,
-            onClick = { onAdbToggle(false) },
+            onClick = { onAdbToggle(false, 1000L) },
             text = { Text("Standard") }
           )
           Tab(
             selected = displayState.isAdbEnabled,
-            onClick = { onAdbToggle(true) },
+            onClick = { onAdbToggle(true, 1000L) },
             text = { Text("ADB (Raw)") }
           )
         }
@@ -98,14 +98,14 @@ fun SigManApp(
               cellularInfos = displayState.cellularInfos,
               carrierBands = displayState.carrierBands,
               lastUpdated = displayState.lastUpdated,
-              modifier = Modifier.padding(innerPadding),
+              modifier = Modifier,
               neighborCellCount = neighborCellCounts.values.firstOrNull() ?: 0,
               fcnConfig = fcnConfig
             )
           } else {
             val pagerState = rememberPagerState(pageCount = { subs.size })
             val scope = rememberCoroutineScope()
-            Column {
+            Column(modifier = Modifier.fillMaxSize()) {
               if (subs.size > 1) {
                 ScrollableTabRow(
                   selectedTabIndex = pagerState.currentPage,

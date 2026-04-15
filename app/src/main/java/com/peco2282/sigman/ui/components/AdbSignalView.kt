@@ -12,12 +12,13 @@ import com.peco2282.sigman.adb.AdbSignalData
 @Composable
 fun AdbSignalView(
     adbEnabled: Boolean,
-    onAdbToggle: (Boolean) -> Unit,
+    onAdbToggle: (Boolean, Long) -> Unit,
     signalData: AdbSignalData?,
     onPair: (String) -> Unit,
     isConnected: Boolean
 ) {
     var pairingCode by remember { mutableStateOf("") }
+    var pollingInterval by remember { mutableStateOf("1000") }
 
     Column(
         modifier = Modifier
@@ -28,7 +29,20 @@ fun AdbSignalView(
         Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
             Text("ADB計測モード", style = MaterialTheme.typography.titleMedium)
             Spacer(Modifier.weight(1f))
-            Switch(checked = adbEnabled, onCheckedChange = onAdbToggle)
+            Switch(
+                checked = adbEnabled,
+                onCheckedChange = { onAdbToggle(it, pollingInterval.toLongOrNull() ?: 1000L) }
+            )
+        }
+
+        if (adbEnabled) {
+            Spacer(Modifier.height(8.dp))
+            OutlinedTextField(
+                value = pollingInterval,
+                onValueChange = { if (it.all { char -> char.isDigit() }) pollingInterval = it },
+                label = { Text("ポーリング周期 (ms)") },
+                modifier = Modifier.fillMaxWidth()
+            )
         }
 
         Divider(Modifier.padding(vertical = 8.dp))
@@ -41,11 +55,16 @@ fun AdbSignalView(
                     value = pairingCode,
                     onValueChange = { pairingCode = it },
                     label = { Text("ペアリングコード") },
-                    modifier = Modifier.fillMaxWidth()
+                    placeholder = { Text("123456") },
+                    modifier = Modifier.fillMaxWidth(),
+                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                        keyboardType = androidx.compose.ui.text.input.KeyboardType.Number
+                    )
                 )
                 Button(
                     onClick = { onPair(pairingCode) },
-                    modifier = Modifier.padding(top = 8.dp)
+                    modifier = Modifier.padding(top = 8.dp),
+                    enabled = pairingCode.length >= 6
                 ) {
                     Text("ペアリング実行")
                 }
@@ -58,6 +77,7 @@ fun AdbSignalView(
                 SignalItem("SNR", "${signalData?.rssnr ?: "N/A"} dB")
                 SignalItem("PCI", "${signalData?.pci ?: "N/A"}")
                 SignalItem("NR State", signalData?.nrState ?: "Unknown")
+                SignalItem("Network", signalData?.networkType ?: "Unknown")
             }
         } else {
             Text("TelephonyManagerを使用した標準計測モードです。")
