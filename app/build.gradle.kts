@@ -89,6 +89,6 @@ dependencies {
   debugImplementation("androidx.compose.ui:ui-test-manifest")
 
   implementation("androidx.compose.material:material-icons-extended")
-  implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.10.0")
+  implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.11.0")
   implementation("com.google.android.gms:play-services-location:21.3.0")
 }
